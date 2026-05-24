@@ -108,8 +108,8 @@ data OtelConfig = OtelConfig
 --
 -- > main :: IO ()
 -- > main = do
--- >   exporter  <- otlpExporter      -- from hs-opentelemetry-exporter-otlp
--- >   processor <- batchProcessor batchOptions exporter
+-- >   exporter  <- loadExporterEnvironmentVariables >>= otlpExporter
+-- >   processor <- batchProcessor batchTimeoutConfig exporter
 -- >   let config = OtelConfig [processor] "my-service" alwaysOn
 -- >   runEff . runTracerOTel config $ withSpan "request" (pure ())
 runTracerOTel

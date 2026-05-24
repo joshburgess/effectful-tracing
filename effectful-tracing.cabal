@@ -24,6 +24,9 @@ tested-with:        GHC == 9.10.3
 extra-doc-files:
   README.md
   CHANGELOG.md
+  docs/tutorial.md
+  docs/cookbook.md
+  docs/design-notes.md
 
 source-repository head
   type:     git

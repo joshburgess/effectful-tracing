@@ -4,10 +4,21 @@ All notable changes to `effectful-tracing` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to be PVP-compliant.
 
-## Unreleased
+## 0.1.0.0 (unreleased)
+
+The first release: the `Tracer` effect, four interpreters (no-op, in-memory,
+pretty-print, OpenTelemetry), W3C Trace Context propagation, sampling, async
+context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- Documentation and example (Phase 10): a guided [tutorial](docs/tutorial.md)
+  from a pretty-printed trace to OpenTelemetry export against a local Jaeger, a
+  [cookbook](docs/cookbook.md) of focused recipes (trace an existing function,
+  attach structured fields, sample but keep what matters, connect inbound and
+  outbound HTTP traces, instrument a long-running worker), and a runnable
+  [`examples/servant-app`](examples/servant-app) Servant service whose inbound
+  `server` span and outbound `client` span join into one trace in Jaeger.
 - http-client tracing wrapper (Phase 9), behind the new `http-client` cabal flag
   (off by default, so the base package does not depend on `http-client`):
   `Effectful.Tracing.Instrumentation.HttpClient` provides `httpLbsTraced`, which

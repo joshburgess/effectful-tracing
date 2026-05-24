@@ -15,9 +15,11 @@ keeps the API clean. The library does not reimplement the OpenTelemetry wire
 format: it compiles down to `hs-opentelemetry` for real export and ships several
 other interpreters (no-op, in-memory, pretty-print) for testing and development.
 
-> Status: early development. This README tracks the current state of the
-> library and is updated as each phase lands. See `PROJECT_BUILD_PLAN.md` for
-> the full roadmap.
+> Status: preparing the first release (`0.1.0.0`). All the planned interpreters
+> (no-op, in-memory, pretty-print, OpenTelemetry), W3C Trace Context
+> propagation, sampling, async context propagation, and the WAI / http-client
+> instrumentation helpers have landed. See `PROJECT_BUILD_PLAN.md` for the full
+> roadmap.
 
 ## Install
 
@@ -28,9 +30,8 @@ published.)
 
 Write a computation against the `Tracer` effect, then discharge it. The no-op
 interpreter (`runTracerNoOp`) satisfies the effect with zero tracing and no
-external dependencies, so this runs as-is. Swap in the in-memory,
-pretty-print, or OpenTelemetry (later phase) interpreter without touching the
-computation.
+external dependencies, so this runs as-is. Swap in the in-memory, pretty-print,
+or OpenTelemetry interpreter without touching the computation.
 
 ```haskell
 {-# LANGUAGE OverloadedStrings #-}
@@ -146,13 +147,30 @@ Both helpers speak W3C Trace Context (`Effectful.Tracing.Propagation`), so a
 `server` span opened by the middleware and a `client` span opened by the wrapper
 join into one distributed trace across the hop. To make a downstream call nest
 under a specific request, run that request's handler in `Eff` so the server span
-is the active span when `httpLbsTraced` runs; a full end-to-end example
-(`examples/servant-app`) lands with the Phase 10 documentation work.
+is the active span when `httpLbsTraced` runs. For a complete, runnable version of
+exactly this wiring, see [`examples/servant-app`](examples/servant-app), a
+two-endpoint Servant service whose inbound and outbound spans join into one trace
+in Jaeger.
 
-## Tutorial
+## Exporting to OpenTelemetry
 
-A guided tutorial (zero to OpenTelemetry export) will live in
-[`docs/tutorial.md`](docs/tutorial.md) (added in Phase 10).
+Build with the `otel` flag and discharge the effect with `runTracerOTel`
+(`Effectful.Tracing.Interpreter.OpenTelemetry`). It keeps this library's ids and
+sampler as the source of truth and translates each finished span into an
+`hs-opentelemetry` span for the `SpanProcessor`s you supply, so you can point it
+at any OTLP collector (Jaeger, Tempo, the OpenTelemetry Collector). The
+[tutorial](docs/tutorial.md) walks through wiring the OTLP exporter and bringing
+up a local Jaeger with `docker compose`.
+
+## Learning more
+
+- [`docs/tutorial.md`](docs/tutorial.md): a guided walkthrough from a trace on
+  your terminal to OpenTelemetry export, in about fifteen minutes.
+- [`docs/cookbook.md`](docs/cookbook.md): short recipes for everyday tasks
+  (trace an existing function, sampling, connecting HTTP traces, workers).
+- [`docs/design-notes.md`](docs/design-notes.md): why the library is built the
+  way it is.
+- [`examples/servant-app`](examples/servant-app): an end-to-end Servant service.
 
 ## Supported GHC
 

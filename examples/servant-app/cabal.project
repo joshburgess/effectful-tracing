@@ -1,0 +1,8 @@
+-- Build this example against the in-tree effectful-tracing, with the optional
+-- instrumentation and OpenTelemetry flags turned on.
+packages:
+  .
+  ../../
+
+package effectful-tracing
+  flags: +otel +wai +http-client
