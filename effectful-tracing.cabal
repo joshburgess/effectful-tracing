@@ -21,7 +21,7 @@ maintainer:         joshualoganburgess@gmail.com
 copyright:          (c) The effectful-tracing contributors
 category:           Tracing, Observability, Effect
 build-type:         Simple
-tested-with:        GHC == 9.10.3
+tested-with:        GHC == 9.6.7 || == 9.8.4 || == 9.10.3
 extra-doc-files:
   README.md
   CHANGELOG.md
@@ -104,8 +104,8 @@ library
     Effectful.Tracing.Internal.Types
 
   build-depends:
-    , base           >=4.20  && <4.21
-    , bytestring     >=0.12  && <0.13
+    , base           >=4.18  && <4.21
+    , bytestring     >=0.11  && <0.13
     , containers     >=0.6   && <0.8
     , effectful      ==2.6.1.0
     , effectful-core ==2.6.1.0
@@ -113,7 +113,7 @@ library
     , http-types     >=0.12  && <0.13
     , random         >=1.2.1 && <1.4
     , stm            >=2.5   && <2.6
-    , text           >=2.1   && <2.2
+    , text           >=2.0   && <2.2
     , time           >=1.12  && <1.15
     , vector         >=0.13  && <0.14
 
@@ -158,8 +158,8 @@ test-suite effectful-tracing-test
     Effectful.Tracing.TypesSpec
 
   build-depends:
-    , base              >=4.20  && <4.21
-    , bytestring        >=0.12  && <0.13
+    , base              >=4.18  && <4.21
+    , bytestring        >=0.11  && <0.13
     , containers        >=0.6   && <0.8
     , effectful         ==2.6.1.0
     , effectful-core    ==2.6.1.0
@@ -171,7 +171,7 @@ test-suite effectful-tracing-test
     , tasty-hedgehog    >=1.4   && <1.5
     , tasty-hunit       >=0.10  && <0.11
     , temporary         >=1.3   && <1.4
-    , text              >=2.1   && <2.2
+    , text              >=2.0   && <2.2
     , time              >=1.12  && <1.15
     , vector            >=0.13  && <0.14
 
@@ -201,7 +201,7 @@ benchmark effectful-tracing-bench
   hs-source-dirs: bench
   main-is:        Main.hs
   build-depends:
-    , base              >=4.20  && <4.21
+    , base              >=4.18  && <4.21
     , effectful-core    ==2.6.1.0
     , effectful-tracing
     , tasty-bench       >=0.3   && <0.5

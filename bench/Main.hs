@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -20,6 +21,12 @@
 module Main (main) where
 
 import Control.Monad (foldM)
+
+-- @foldl'@ moved into Prelude in base-4.20 (GHC 9.10); import it explicitly on
+-- older bases so the package still builds on GHC 9.6 / 9.8.
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
 
 import Effectful (Eff, runEff, (:>))
 import Effectful.Tracing (Tracer, runTracerNoOp, withSpan)

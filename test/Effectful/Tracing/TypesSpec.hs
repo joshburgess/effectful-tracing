@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -17,6 +18,12 @@ import Data.Bits (testBit)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text qualified as T
 import Data.Word (Word8)
+
+-- @foldl'@ moved into Prelude in base-4.20 (GHC 9.10); import it explicitly on
+-- older bases so the package still builds on GHC 9.6 / 9.8.
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
 
 import Hedgehog (Gen, Property, forAll, property, (===))
 import Hedgehog.Gen qualified as Gen

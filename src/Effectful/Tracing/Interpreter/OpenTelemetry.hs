@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -42,6 +43,12 @@ import Data.IORef (newIORef)
 import Data.Text (Text)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Vector qualified as V
+
+-- @foldl'@ moved into Prelude in base-4.20 (GHC 9.10); import it explicitly on
+-- older bases so the package still builds on GHC 9.6 / 9.8.
+#if !MIN_VERSION_base(4,20,0)
+import Data.List (foldl')
+#endif
 
 import System.Clock (TimeSpec (TimeSpec))
 

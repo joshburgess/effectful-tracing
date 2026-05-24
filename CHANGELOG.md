@@ -12,6 +12,14 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- Support for GHC 9.6 and 9.8 alongside 9.10. The `base` lower bound is relaxed
+  to `>=4.18` (with `bytestring`/`text` lower bounds widened to match), and
+  `foldl'` is imported from `Data.List` on bases before 4.20, where it is not yet
+  re-exported from `Prelude`. CI now runs the build-and-test job across all three
+  compilers, adds a job that builds and tests with every cabal flag enabled
+  (`otel`, `wai`, `http-client`, `secure-ids`), and gates Haddock on broken
+  doc-links. No `cabal.project.freeze` is committed, so each compiler solves its
+  own consistent dependency set.
 - New `secure-ids` cabal flag (off by default). When enabled, trace and span
   identifiers are minted from `crypton`'s cryptographically secure system
   entropy instead of the default fast splitmix PRNG, for callers who need ids

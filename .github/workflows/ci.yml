@@ -16,7 +16,40 @@ permissions:
 
 jobs:
   build-test:
-    name: build & test (GHC 9.10.3)
+    name: build & test (GHC ${{ matrix.ghc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ["9.6.7", "9.8.4", "9.10.3"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: "3.14.2.0"
+
+      - name: Configure
+        run: cabal configure --enable-tests --enable-benchmarks
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc${{ matrix.ghc }}-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc${{ matrix.ghc }}-
+
+      - name: Build (incl. benchmarks)
+        run: cabal build all
+
+      - name: Test
+        run: cabal test all --test-show-details=direct
+
+  flags:
+    name: build & test with all flags (GHC 9.10.3)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,24 +61,52 @@ jobs:
           cabal-version: "3.14.2.0"
 
       - name: Configure
-        run: cabal configure --enable-tests --enable-benchmarks
-
-      - name: Freeze
-        run: cabal freeze
+        run: cabal configure --enable-tests --flags="otel wai http-client secure-ids"
 
       - name: Cache cabal store
         uses: actions/cache@v4
         with:
           path: ~/.local/state/cabal/store
-          key: ${{ runner.os }}-ghc9.10.3-${{ hashFiles('cabal.project.freeze') }}
+          key: ${{ runner.os }}-ghc9.10.3-flags-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
           restore-keys: |
-            ${{ runner.os }}-ghc9.10.3-
+            ${{ runner.os }}-ghc9.10.3-flags-
 
-      - name: Build (incl. benchmarks)
-        run: cabal build all
+      - name: Build (all flags)
+        run: cabal build all --flags="otel wai http-client secure-ids"
 
-      - name: Test
-        run: cabal test all --test-show-details=direct
+      - name: Test (all flags)
+        run: cabal test all --flags="otel wai http-client secure-ids" --test-show-details=direct
+
+  haddock:
+    name: haddock (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.10.3-haddock-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-haddock-
+
+      # Build docs for every module (all flags) and fail if Haddock reports a
+      # broken doc-link. This guards the doc-link cleanup against regressing.
+      - name: Build Haddock (fail on broken doc-links)
+        run: |
+          set -o pipefail
+          cabal haddock all --flags="otel wai http-client secure-ids" 2>&1 | tee haddock.log
+          if grep -q "could not find link destination" haddock.log; then
+            echo "::error::Haddock reported broken doc-links (see log above)"
+            exit 1
+          fi
 
   hlint:
     name: hlint
