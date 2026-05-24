@@ -25,6 +25,9 @@ module Effectful.Tracing
   , defaultSpanArguments
   , transitionStatus
 
+    -- * Interpreters
+  , runTracerNoOp
+
     -- * Attributes
   , module Effectful.Tracing.Attribute
 
@@ -84,6 +87,7 @@ import Effectful.Tracing.Effect
   , withSpan
   , withSpan'
   )
+import Effectful.Tracing.Interpreter.NoOp (runTracerNoOp)
 import Effectful.Tracing.Internal.Clock (Timestamp (..), getTimestamp)
 import Effectful.Tracing.Internal.Ids
   ( SpanId

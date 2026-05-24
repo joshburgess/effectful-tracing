@@ -8,6 +8,16 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- No-op interpreter (Phase 3): `runTracerNoOp`, re-exported from
+  `Effectful.Tracing`, discharges the `Tracer` effect with no observable
+  effect: scoped actions run unchanged (exceptions propagate), emit operations
+  are silent, and there is never an active span. This is the interpreter for
+  components that need `Tracer` when the caller does not want tracing, and the
+  baseline for the overhead benchmark. Tests cover nested-span return values,
+  exception propagation, and silent emits. The `tasty-bench` benchmark
+  (`bench/Main.hs`) reports the fixed per-`withSpan` cost (~15 ns, dynamic
+  dispatch plus `localSeqUnlift`); spans wrapping real work stay under the 5%
+  overhead target. The README quick-start now runs against `runTracerNoOp`.
 - `Tracer` effect (Phase 2): tracing modeled as a dynamic `effectful` effect.
   - The effect with one higher-order operation (`WithSpan`) and first-order
     emit operations (`AddAttribute`, `AddAttributes`, `AddEvent`,

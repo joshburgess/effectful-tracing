@@ -50,6 +50,7 @@ library
     Effectful.Tracing
     Effectful.Tracing.Attribute
     Effectful.Tracing.Effect
+    Effectful.Tracing.Interpreter.NoOp
     Effectful.Tracing.Internal.Clock
     Effectful.Tracing.Internal.Ids
     Effectful.Tracing.Internal.Types
@@ -72,6 +73,7 @@ test-suite effectful-tracing-test
   other-modules:
     Effectful.Tracing.CompileTest
     Effectful.Tracing.Gen
+    Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PropertySpec
 
   build-depends:
@@ -92,5 +94,7 @@ benchmark effectful-tracing-bench
   hs-source-dirs: bench
   main-is:        Main.hs
   build-depends:
-    , base        >=4.20 && <4.21
-    , tasty-bench >=0.3  && <0.5
+    , base              >=4.20  && <4.21
+    , effectful-core    ==2.6.1.0
+    , effectful-tracing
+    , tasty-bench       >=0.3   && <0.5

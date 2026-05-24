@@ -26,17 +26,35 @@ published.)
 
 ## Quick start
 
-The runnable quick start lands with the no-op and pretty-print interpreters
-(Phases 3 and 5). It will look roughly like this:
+Write a computation against the `Tracer` effect, then discharge it. The no-op
+interpreter (`runTracerNoOp`) satisfies the effect with zero tracing and no
+external dependencies, so this runs as-is. Swap in the in-memory,
+pretty-print, or OpenTelemetry interpreter (later phases) without touching the
+computation.
 
 ```haskell
--- placeholder, not yet runnable
-example :: (Tracer :> es, IOE :> es) => Eff es Int
-example = withSpan "outer" $ do
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main (main) where
+
+import Data.Text (Text)
+import Effectful (Eff, runEff, (:>))
+import Effectful.Tracing
+
+-- A computation that uses tracing without committing to a backend.
+compute :: Tracer :> es => Eff es Int
+compute = withSpan "outer" $ do
   addAttribute "user.id" ("u123" :: Text)
-  withSpan "inner" $ do
+  total <- withSpan "inner" $ do
     addEvent "fetching" []
     pure 42
+  setStatus Ok
+  pure total
+
+main :: IO ()
+main = do
+  result <- runEff (runTracerNoOp compute)
+  print result
 ```
 
 ## Tutorial
