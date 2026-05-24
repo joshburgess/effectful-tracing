@@ -237,5 +237,6 @@ purely by changing the interpreter.
 ## Where to go next
 
 - [`cookbook.md`](cookbook.md): focused recipes for everyday tasks.
-- [`design-notes.md`](design-notes.md): why the library is built the way it is.
+- [`design.md`](design.md): how the library is designed, organized by concept.
+- [`design-notes.md`](design-notes.md): the phase-by-phase development history.
 - The README's "Instrumenting a web service" section for the full HTTP wiring.

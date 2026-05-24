@@ -173,8 +173,11 @@ up a local Jaeger with `docker compose`.
   your terminal to OpenTelemetry export, in about fifteen minutes.
 - [`docs/cookbook.md`](docs/cookbook.md): short recipes for everyday tasks
   (trace an existing function, sampling, connecting HTTP traces, workers).
-- [`docs/design-notes.md`](docs/design-notes.md): why the library is built the
-  way it is.
+- [`docs/design.md`](docs/design.md): how the library is designed, organized by
+  concept (the data model, the Tracer effect, the lifecycle, sampling,
+  propagation, OTel export). Start here to understand the internals.
+- [`docs/design-notes.md`](docs/design-notes.md): the chronological development
+  history, phase by phase, behind that design.
 - [`examples/servant-app`](examples/servant-app): an end-to-end Servant service.
 
 ## Supported GHC
