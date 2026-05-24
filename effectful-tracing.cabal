@@ -9,8 +9,9 @@ description:
   OpenTelemetry interpreter that compiles down to @hs-opentelemetry@; other
   interpreters (no-op, in-memory, pretty-print) cover testing and development.
   .
-  This is an early, in-development release. See the project build plan for the
-  phased roadmap.
+  This is an early release: the API is experimental and may change between
+  versions. See the README and the @docs@ directory for a tutorial, cookbook,
+  and design overview.
 homepage:           https://github.com/joshburgess/effectful-tracing
 bug-reports:        https://github.com/joshburgess/effectful-tracing/issues
 license:            BSD-3-Clause
@@ -55,6 +56,16 @@ flag http-client
     Build the http-client tracing wrappers
     (@Effectful.Tracing.Instrumentation.HttpClient@). Off by default so the base
     package does not depend on @http-client@.
+  default:     False
+  manual:      True
+
+flag secure-ids
+  description:
+    Mint trace and span identifiers from a cryptographically secure source
+    (@crypton@'s system entropy) instead of the default fast splitmix PRNG. Off
+    by default: the fast PRNG is the conventional SDK choice and keeps per-span
+    cost low. Turn this on when identifiers must be unpredictable to an
+    attacker. The @newTraceId@ \/ @newSpanId@ surface is identical either way.
   default:     False
   manual:      True
 
@@ -119,6 +130,10 @@ library
   if flag(http-client)
     exposed-modules: Effectful.Tracing.Instrumentation.HttpClient
     build-depends:   http-client >=0.7 && <0.8
+
+  if flag(secure-ids)
+    cpp-options:   -DSECURE_IDS
+    build-depends: crypton >=1.0 && <1.2
 
 test-suite effectful-tracing-test
   import:         warnings, language

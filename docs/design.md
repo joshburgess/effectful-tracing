@@ -70,10 +70,12 @@ newtype TraceId = TraceId ByteString  -- exactly 16 bytes
 newtype SpanId  = SpanId  ByteString  -- exactly 8 bytes
 ```
 
-- **Generation uses a fast PRNG, not a CSPRNG.** Bytes come from `random`'s
-  splitmix-backed generator. This is the conventional SDK approach and keeps
-  per-span allocation cheap. A `crypton`-backed generator is reserved for a
-  future opt-in flag without changing the `newTraceId` / `newSpanId` names.
+- **Generation uses a fast PRNG by default, not a CSPRNG.** Bytes come from
+  `random`'s splitmix-backed generator. This is the conventional SDK approach and
+  keeps per-span allocation cheap. The `secure-ids` cabal flag swaps the byte
+  source to `crypton`'s cryptographically secure system entropy for callers who
+  need unpredictable ids, without changing the `newTraceId` / `newSpanId` names
+  or types.
 - **The all-zero id (the spec's "invalid" sentinel) is never minted.** The
   generators redraw on the astronomically unlikely all-zero result.
   `isValidTraceId` / `isValidSpanId` exist for parsed or remote ids.

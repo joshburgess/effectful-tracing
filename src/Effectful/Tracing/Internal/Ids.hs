@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -49,7 +50,12 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeLatin1)
 import Data.Word (Word8)
+
+#ifdef SECURE_IDS
+import Crypto.Random (getRandomBytes)
+#else
 import System.Random.Stateful (globalStdGen, uniformByteStringM)
+#endif
 
 -- | The fixed length of a trace identifier, in bytes (16, per the spec).
 traceIdByteLength :: Int
@@ -75,10 +81,13 @@ instance Show SpanId where
 
 -- | Generate a fresh, valid (non-zero) trace identifier.
 --
--- Uses a fast pseudo-random source (@random@'s global @StdGen@, splitmix under
--- the hood), not a CSPRNG. This is the conventional SDK choice and keeps
--- per-span cost low. The all-zero identifier is the spec's "invalid" sentinel
--- and is never returned.
+-- By default this uses a fast pseudo-random source (@random@'s global
+-- @StdGen@, splitmix under the hood), not a CSPRNG. This is the conventional
+-- SDK choice and keeps per-span cost low. Building with the @secure-ids@ cabal
+-- flag swaps the byte source to @crypton@'s cryptographically secure system
+-- entropy, leaving this function's name and type unchanged. The all-zero
+-- identifier is the spec's "invalid" sentinel and is never returned in either
+-- mode.
 newTraceId :: (MonadIO m) => m TraceId
 newTraceId = TraceId <$> randomNonZeroBytes traceIdByteLength
 
@@ -90,10 +99,20 @@ newSpanId = SpanId <$> randomNonZeroBytes spanIdByteLength
 -- draw so the result is always a valid identifier.
 randomNonZeroBytes :: (MonadIO m) => Int -> m ByteString
 randomNonZeroBytes n = do
-  bytes <- liftIO (uniformByteStringM n globalStdGen)
+  bytes <- liftIO (drawBytes n)
   if BS.all (== 0) bytes
     then randomNonZeroBytes n
     else pure bytes
+
+-- | Draw @n@ random bytes from the configured source. The @secure-ids@ cabal
+-- flag selects between @crypton@'s cryptographically secure system entropy and
+-- @random@'s fast splitmix-backed global generator (the default).
+drawBytes :: Int -> IO ByteString
+#ifdef SECURE_IDS
+drawBytes = getRandomBytes
+#else
+drawBytes n = uniformByteStringM n globalStdGen
+#endif
 
 -- | A trace identifier is valid when it is the right length and not all zero.
 isValidTraceId :: TraceId -> Bool

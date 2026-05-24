@@ -12,6 +12,12 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- New `secure-ids` cabal flag (off by default). When enabled, trace and span
+  identifiers are minted from `crypton`'s cryptographically secure system
+  entropy instead of the default fast splitmix PRNG, for callers who need ids
+  that are unpredictable to an attacker. The `newTraceId` / `newSpanId` surface
+  is unchanged; only the byte source is swapped, and `crypton` is pulled in only
+  when the flag is on.
 - Expanded unit and property coverage for the pure surface that the interpreter
   tests previously only exercised indirectly: `Effectful.Tracing.TypesSpec`
   (status-transition rules, trace-state dedup/capacity/validation, trace-flags
