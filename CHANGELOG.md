@@ -8,6 +8,24 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- W3C Trace Context propagation (Phase 8): `Effectful.Tracing.Propagation`
+  carries a trace across a process boundary using the standard `traceparent`
+  and `tracestate` headers, with no dependency on an OpenTelemetry SDK.
+  `injectContext` serializes the active span's context into a header list for an
+  outbound request (and emits nothing when there is no active span, so it
+  composes with a base header list unconditionally); `extractContext` parses an
+  inbound request's headers into a remote `SpanContext`. `withRemoteParent` (a
+  new `Tracer` operation, also re-exported here) then continues that remote
+  trace locally: spans opened in its scope inherit the remote trace id and
+  sampled flag and record the remote span as their parent. Header lookup is
+  case-insensitive, future `traceparent` versions are accepted by reading the
+  first four fields, the all-zero ids and the reserved `ff` version are
+  rejected, and an unparsable `tracestate` is treated as empty rather than
+  failing the whole extraction (per the spec's resilience guidance). Tested with
+  the W3C `traceparent` test vectors plus inject/extract round-trips through the
+  in-memory interpreter.
+- New library dependency on `http-types` (for the `HeaderName` type used by the
+  propagation API), pinned to `>=0.12 && <0.13`.
 - Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
   span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
   `asyncInstrumented`, `concurrentlyInstrumented`, and

@@ -31,6 +31,7 @@ import Effectful.Tracing.Effect
       , RecordException
       , SetStatus
       , WithLinkedRoot
+      , WithRemoteParent
       , WithSpan
       )
   )
@@ -46,6 +47,7 @@ runTracerNoOp :: Eff (Tracer : es) a -> Eff es a
 runTracerNoOp = interpret $ \env -> \case
   WithSpan _ _ action -> localSeqUnlift env (\unlift -> unlift action)
   WithLinkedRoot _ action -> localSeqUnlift env (\unlift -> unlift action)
+  WithRemoteParent _ action -> localSeqUnlift env (\unlift -> unlift action)
   AddAttribute _ _ -> pure ()
   AddAttributes _ -> pure ()
   AddEvent _ _ -> pure ()

@@ -54,6 +54,7 @@ import Effectful.Tracing.Effect
       , RecordException
       , SetStatus
       , WithLinkedRoot
+      , WithRemoteParent
       , WithSpan
       )
   , transitionStatus
@@ -65,7 +66,7 @@ import Effectful.Tracing.Internal.Types
   , Link
   , Span (..)
   , SpanContext (..)
-  , SpanKind
+  , SpanKind (Internal)
   , SpanStatus (Error, Unset)
   , defaultTraceFlags
   , emptyTraceState
@@ -150,6 +151,13 @@ interpretTracer sampler onComplete =
       -- the links so that root picks them up.
       Dynamic.localSeqUnlift env $ \unlift ->
         local (const (Nothing :: Maybe ActiveSpan)) (local (const newLinks) (unlift action))
+    WithRemoteParent context action -> do
+      -- Make the remote context the active parent for the scope so a nested
+      -- WithSpan continues its trace. The remote span is not ours to emit, so it
+      -- carries a throwaway builder and is never finalized.
+      remote <- remoteActiveSpan context
+      Dynamic.localSeqUnlift env $ \unlift ->
+        local (const (Just remote)) (local (const ([] :: [Link])) (unlift action))
     AddAttribute key value ->
       withActive $ \active ->
         liftIO (modifyIORef' (activeBuilder active) (pushAttributes [Attribute key value]))
@@ -232,6 +240,26 @@ openSpan sampler name args parent pendingLinks = do
       , activeLinks = spanLinks
       , activeBuilder = builder
       , activeDecision = decision result
+      }
+
+-- | A synthetic 'ActiveSpan' standing in for a remote parent. It exists only to
+-- be the parent context for spans opened inside a 'WithRemoteParent' scope: it
+-- is never finalized or emitted, so its builder is a throwaway and its name and
+-- kind are placeholders. The context is marked remote.
+remoteActiveSpan :: IOE :> es => SpanContext -> Eff es ActiveSpan
+remoteActiveSpan context = do
+  start <- getTimestamp
+  builder <- liftIO (newIORef (SpanBuilder [] [] Unset))
+  pure
+    ActiveSpan
+      { activeContext = context {spanContextIsRemote = True}
+      , activeParent = Nothing
+      , activeName = ""
+      , activeKind = Internal
+      , activeStart = start
+      , activeLinks = []
+      , activeBuilder = builder
+      , activeDecision = RecordAndSample
       }
 
 -- | Finalize a span: record its end time, fold in an error status and exception

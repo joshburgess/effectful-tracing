@@ -16,6 +16,7 @@ module Effectful.Tracing
   , withSpan
   , withSpan'
   , withLinkedRoot
+  , withRemoteParent
   , addAttribute
   , addAttributes
   , addEvent
@@ -28,6 +29,12 @@ module Effectful.Tracing
 
     -- * Interpreters
   , runTracerNoOp
+
+    -- * Context propagation
+  , traceparentHeader
+  , tracestateHeader
+  , injectContext
+  , extractContext
 
     -- * Sampling
   , SamplingDecision (..)
@@ -98,10 +105,17 @@ import Effectful.Tracing.Effect
   , setStatus
   , transitionStatus
   , withLinkedRoot
+  , withRemoteParent
   , withSpan
   , withSpan'
   )
 import Effectful.Tracing.Interpreter.NoOp (runTracerNoOp)
+import Effectful.Tracing.Propagation
+  ( extractContext
+  , injectContext
+  , traceparentHeader
+  , tracestateHeader
+  )
 import Effectful.Tracing.Sampler
   ( ParentBasedConfig (..)
   , Sampler (..)

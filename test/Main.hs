@@ -14,6 +14,7 @@ import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
+import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
 
@@ -29,5 +30,6 @@ main =
         , PrettyPrintSpec.tests
         , SamplerSpec.tests
         , ConcurrentSpec.tests
+        , PropagationSpec.tests
         ]
     )

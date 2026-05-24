@@ -32,6 +32,7 @@ module Effectful.Tracing.Effect
   , withSpan
   , withSpan'
   , withLinkedRoot
+  , withRemoteParent
 
     -- * Annotating the active span
   , addAttribute
@@ -65,12 +66,15 @@ import Effectful.Tracing.Internal.Types
 -- action @m a@ inside a child span whose parent is the lexically-current active
 -- span. 'WithLinkedRoot' is also higher-order: it detaches the active span for
 -- its scope (so a nested 'WithSpan' starts a new root trace) while recording
--- links to the spans that caused the work. The remaining operations annotate
--- the active span and are no-ops when there is none (see
+-- links to the spans that caused the work. 'WithRemoteParent' is the inbound
+-- counterpart: it makes a remote span context the active parent for its scope,
+-- so a nested 'WithSpan' continues that remote trace. The remaining operations
+-- annotate the active span and are no-ops when there is none (see
 -- "Effectful.Tracing.Effect#no-active-span").
 data Tracer :: Effect where
   WithSpan :: Text -> SpanArguments -> m a -> Tracer m a
   WithLinkedRoot :: [Link] -> m a -> Tracer m a
+  WithRemoteParent :: SpanContext -> m a -> Tracer m a
   AddAttribute :: Text -> AttributeValue -> Tracer m ()
   AddAttributes :: [Attribute] -> Tracer m ()
   AddEvent :: Text -> [Attribute] -> Tracer m ()
@@ -155,6 +159,27 @@ withLinkedRoot
   -> Eff es a
   -> Eff es a
 withLinkedRoot links action = send (WithLinkedRoot links action)
+
+-- | Run an action as if it were a child of the given remote span. Inside the
+-- scope the active span is the remote context, so the first 'withSpan'
+-- continues that trace: it inherits the remote trace id and sampled flag and
+-- records the remote span as its parent. This is how an inbound request rejoins
+-- a distributed trace; pair it with 'Effectful.Tracing.Propagation.extractContext'
+-- to turn @traceparent@ / @tracestate@ headers into the 'SpanContext'.
+--
+-- The remote span is not local and is never emitted: this only sets the parent
+-- for spans opened within the scope. Emit operations issued directly in the
+-- scope (outside any 'withSpan') have no local span to annotate and are
+-- dropped.
+--
+-- > withRemoteParent inbound $
+-- >   withSpan' "handle.request" defaultSpanArguments { kind = Server } $ ...
+withRemoteParent
+  :: (HasCallStack, Tracer :> es)
+  => SpanContext
+  -> Eff es a
+  -> Eff es a
+withRemoteParent context action = send (WithRemoteParent context action)
 
 -- | Attach a single attribute to the active span. No-op if there is no active
 -- span.
