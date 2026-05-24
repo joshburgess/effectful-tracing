@@ -48,6 +48,7 @@
 module Effectful.Tracing.Interpreter.PrettyPrint
   ( -- * Interpreter
     runTracerPretty
+  , runTracerPrettyWith
 
     -- * Configuration
   , PrettyPrintConfig (..)
@@ -145,7 +146,29 @@ runTracerPretty
   -> Eff es a
 runTracerPretty config eff = do
   traces <- liftIO (newTVarIO Map.empty)
-  interpretTracer (sampler config) (flushOnRoot config traces) eff
+  runTracerPrettyWith traces config eff
+
+-- | Like 'runTracerPretty', but render through a caller-supplied buffer of
+-- in-flight traces rather than allocating a fresh one internally. A trace is
+-- accumulated in the buffer and removed the instant its root span closes (when
+-- the whole tree is rendered), so once every root has closed the buffer holds
+-- nothing.
+--
+-- This exists mainly as a testing and diagnostic seam: a caller can read the
+-- @TVar@ to confirm the buffer drains to empty, that is, that no in-flight trace
+-- is retained after its root closes. Ordinary callers want 'runTracerPretty',
+-- which manages the buffer for you.
+runTracerPrettyWith
+  :: IOE :> es
+  => TVar (Map TraceId [Span])
+  -- ^ The in-flight trace buffer, keyed by trace id. Pass a freshly-created
+  -- empty buffer (a @TVar@ holding the empty @Map@) unless you mean to observe
+  -- it.
+  -> PrettyPrintConfig
+  -> Eff (Tracer : es) a
+  -> Eff es a
+runTracerPrettyWith traces config =
+  interpretTracer (sampler config) (flushOnRoot config traces)
 
 -- | Accumulate a completed span under its trace id; when the span is a root,
 -- pop the whole trace and render it.

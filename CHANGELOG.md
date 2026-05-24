@@ -90,6 +90,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
   evaluation stack and overflow the 1K limit; the current strict lifecycle runs
   it in O(1) stack. It is kept out of the tasty suite because the property tests
   legitimately need a larger stack and so cannot share these RTS options.
+- Pretty-print buffer-drain test (`Effectful.Tracing.PrettyPrintLeakSpec`): the
+  pretty-print interpreter buffers each in-flight trace's spans in a
+  `TVar (Map TraceId [Span])` and flushes (renders and deletes) a trace the
+  moment its root span closes, so a finished trace left behind would grow that
+  map without bound over a long-running process. This drives a program through a
+  new buffer-observing seam (`runTracerPrettyWith`) and asserts both that
+  already-closed children are held while their root is still open (the buffering
+  is real) and that the map is empty once every root has closed (nothing is
+  retained), while confirming each trace was rendered exactly once.
 - Id generator tests (`Effectful.Tracing.IdGenSpec`): the existing id tests
   pinned the codec and validity edges but never exercised the generators
   themselves, so the `secure-ids` byte source went untested. These assert that a
