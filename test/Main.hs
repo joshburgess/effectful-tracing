@@ -28,6 +28,10 @@ import Effectful.Tracing.OpenTelemetrySpec qualified as OpenTelemetrySpec
 import Effectful.Tracing.Instrumentation.WaiSpec qualified as WaiSpec
 #endif
 
+#ifdef HTTP_CLIENT
+import Effectful.Tracing.Instrumentation.HttpClientSpec qualified as HttpClientSpec
+#endif
+
 main :: IO ()
 main =
   defaultMain
@@ -44,6 +48,7 @@ main =
           ]
             <> otelTests
             <> waiTests
+            <> httpClientTests
         )
     )
 
@@ -61,4 +66,12 @@ waiTests :: [TestTree]
 waiTests = [WaiSpec.tests]
 #else
 waiTests = []
+#endif
+
+-- | The http-client tests, present only when built with @+http-client@.
+httpClientTests :: [TestTree]
+#ifdef HTTP_CLIENT
+httpClientTests = [HttpClientSpec.tests]
+#else
+httpClientTests = []
 #endif

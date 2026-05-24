@@ -87,6 +87,68 @@ trace 4f1a9c000000000000000000000000aa (1ms)
 interpreter (`Effectful.Tracing.Interpreter.InMemory`) captures completed spans
 into a buffer you can assert on.
 
+## Instrumenting a web service
+
+Two optional helpers cover the common server seams. Each is behind a cabal flag
+(off by default), so the base package never pulls in a web stack:
+
+- `Effectful.Tracing.Instrumentation.Wai` (flag `wai`): a `Middleware` that opens
+  a `server` span per request and continues an inbound distributed trace.
+- `Effectful.Tracing.Instrumentation.HttpClient` (flag `http-client`): a wrapper
+  that opens a `client` span and injects the trace context into outbound
+  requests.
+
+Enable them when depending on the package:
+
+```cabal
+build-depends: effectful-tracing
+-- in cabal.project, or via --flags on the command line:
+--   --flags="wai http-client"
+```
+
+On the inbound side, wrap your application with `traceMiddleware`. Because WAI
+runs in `IO` but the `Tracer` effect lives in `Eff`, the middleware takes an
+unlift function from effectful's `withEffToIO`. A real server handles requests
+concurrently, so use a concurrent unlift strategy:
+
+```haskell
+import Effectful
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.Wai (traceMiddleware)
+import Network.Wai (Application)
+import Network.Wai.Handler.Warp qualified as Warp
+
+runServer :: (IOE :> es, Tracer :> es) => Application -> Eff es ()
+runServer app =
+  withEffToIO (ConcUnlift Persistent Unlimited) $ \runInIO ->
+    Warp.run 8080 (traceMiddleware runInIO app)
+```
+
+On the outbound side, call downstream services through `httpLbsTraced`. It opens
+a `client` span and writes `traceparent` / `tracestate` into the request, so the
+next service continues the same trace:
+
+```haskell
+import Control.Monad.IO.Class (liftIO)
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer, withSpan)
+import Effectful.Tracing.Instrumentation.HttpClient (httpLbsTraced)
+import Network.HTTP.Client (Manager, Response, parseRequest)
+import Data.ByteString.Lazy (ByteString)
+
+fetchWidget :: (IOE :> es, Tracer :> es) => Manager -> Eff es (Response ByteString)
+fetchWidget manager = withSpan "load.widgets" $ do
+  req <- liftIO (parseRequest "https://widgets.internal/widgets")
+  httpLbsTraced req manager
+```
+
+Both helpers speak W3C Trace Context (`Effectful.Tracing.Propagation`), so a
+`server` span opened by the middleware and a `client` span opened by the wrapper
+join into one distributed trace across the hop. To make a downstream call nest
+under a specific request, run that request's handler in `Eff` so the server span
+is the active span when `httpLbsTraced` runs; a full end-to-end example
+(`examples/servant-app`) lands with the Phase 10 documentation work.
+
 ## Tutorial
 
 A guided tutorial (zero to OpenTelemetry export) will live in

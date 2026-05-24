@@ -8,6 +8,23 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- http-client tracing wrapper (Phase 9), behind the new `http-client` cabal flag
+  (off by default, so the base package does not depend on `http-client`):
+  `Effectful.Tracing.Instrumentation.HttpClient` provides `httpLbsTraced`, which
+  runs an `http-client` request inside a `client`-kind span. It injects the
+  active context as `traceparent` / `tracestate` into the outbound request (so
+  the downstream hop continues this trace), records `http.method` and `http.url`
+  at span start and `http.status_code` on the response (a status `>= 400` sets
+  the span status to error), and relies on the shared span lifecycle to record
+  any thrown exception. The API stays in `Eff es` (no unlift needed); the
+  `Manager`-hook approach is intentionally omitted because the hooks run in `IO`
+  with no effect context. Attributes follow the OpenTelemetry HTTP semantic
+  conventions v1.20.0. Tested against a loopback Warp server that confirms
+  end-to-end propagation (the server receives a `traceparent` carrying the client
+  span's trace id) along with the attributes and status mapping.
+- New `http-client` cabal flag gating the wrapper and its `http-client`
+  dependency (`>=0.7 && <0.8`) for the library; the test suite additionally uses
+  `wai` and `warp` (`>=3.3 && <3.5`) for the loopback server.
 - WAI tracing middleware (Phase 9), behind the new `wai` cabal flag (off by
   default, so the base package does not depend on `wai`):
   `Effectful.Tracing.Instrumentation.Wai` provides `traceMiddleware` (and
