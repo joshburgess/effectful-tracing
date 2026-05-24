@@ -20,6 +20,17 @@ context propagation, and the WAI / http-client instrumentation helpers.
   (`otel`, `wai`, `http-client`, `secure-ids`), and gates Haddock on broken
   doc-links. No `cabal.project.freeze` is committed, so each compiler solves its
   own consistent dependency set.
+- Two release-hardening CI jobs. A `publish-readiness` job runs `cabal check`
+  (the same gate Hackage applies on upload) and then builds the library and
+  tests from a `cabal sdist` tarball rather than the working tree, proving the
+  source distribution ships everything needed to compile. A `lower-bounds` job
+  builds and tests the default package with `--prefer-oldest` on the oldest
+  supported GHC (9.6.7, base 4.18), so the declared lower bounds are exercised
+  rather than assumed. The optional-instrumentation flags are excluded from the
+  lower-bounds job because their heavy transitive chains (the OTel stack, and a
+  Warp server in the http-client tests) have oldest published versions that
+  predate the supported GHC range and fail to compile there, so minimizing them
+  would test third parties' GHC compatibility rather than our bounds.
 - New `secure-ids` cabal flag (off by default). When enabled, trace and span
   identifiers are minted from `crypton`'s cryptographically secure system
   entropy instead of the default fast splitmix PRNG, for callers who need ids

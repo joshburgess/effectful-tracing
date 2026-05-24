@@ -144,6 +144,87 @@ jobs:
         working-directory: examples/servant-app
         run: cabal build all
 
+  lower-bounds:
+    name: lower bounds (--prefer-oldest, GHC 9.6.7)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.6.7"
+          cabal-version: "3.14.2.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.6.7-oldest-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.6.7-oldest-
+
+      # Solve and build against the floor of every dependency bound so the lower
+      # bounds in the cabal file are not just aspirational. Run on the oldest
+      # supported GHC (base 4.18) where those floors are most likely to bite.
+      #
+      # This runs the default build (library + core test/bench deps), which is
+      # where our own lower bounds live. The optional-instrumentation flags
+      # (+otel, +wai, +http-client) are deliberately omitted: they pull heavy
+      # transitive chains (the OTel stack via vector-builder -> semigroups ->
+      # deepseq -> array, and a Warp server in the http-client tests) whose
+      # *oldest* published versions predate our supported GHC range and fail to
+      # compile on a modern GHC. --prefer-oldest there would test those third
+      # parties' GHC compatibility, not our bounds, so it is not meaningful here.
+      - name: Configure (prefer oldest)
+        run: cabal configure --enable-tests --enable-benchmarks --prefer-oldest
+
+      - name: Build (prefer oldest)
+        run: cabal build all --prefer-oldest
+
+      - name: Test (prefer oldest)
+        run: cabal test all --prefer-oldest --test-show-details=direct
+
+  publish-readiness:
+    name: publish readiness (cabal check + build from sdist)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.10.3-sdist-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-sdist-
+
+      # Hackage runs `cabal check` on upload, so gate on it here. Then build the
+      # package from the source distribution tarball (not the working tree) to
+      # prove the sdist actually ships everything needed to compile.
+      - name: cabal check
+        run: cabal check
+
+      - name: Build a source distribution
+        run: cabal sdist all
+
+      - name: Build the library and tests from the sdist
+        run: |
+          set -euo pipefail
+          tarball=$(find dist-newstyle/sdist -name 'effectful-tracing-*.tar.gz' | head -n1)
+          echo "Building from sdist: $tarball"
+          workdir=$(mktemp -d)
+          tar -xzf "$tarball" -C "$workdir"
+          srcdir=$(find "$workdir" -maxdepth 1 -type d -name 'effectful-tracing-*')
+          cd "$srcdir"
+          cabal build all --enable-tests --flags="otel wai http-client secure-ids"
+
   hlint:
     name: hlint
     runs-on: ubuntu-latest
@@ -154,5 +235,5 @@ jobs:
       - name: Run hlint
         uses: haskell-actions/hlint-run@v2
         with:
-          path: '["src/", "test/", "bench/"]'
+          path: '["src/", "test/", "test-space-leak/", "bench/"]'
           fail-on: warning
