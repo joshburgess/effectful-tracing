@@ -106,6 +106,14 @@ context propagation, and the WAI / http-client instrumentation helpers.
   outbound HTTP traces, instrument a long-running worker), and a runnable
   [`examples/servant-app`](examples/servant-app) Servant service whose inbound
   `server` span and outbound `client` span join into one trace in Jaeger.
+- Two runnable examples that need no collector ([`examples/local-dev`](examples/local-dev)),
+  each built in CI against the in-tree library with default flags: a `worker`
+  loop with one span per job, an interpreter chosen at runtime via `ET_TRACER`
+  (pretty / no-op / in-memory), an error-recording span, and a linked background
+  trace; and a `sampling` program that runs the cookbook's "keep all priority
+  spans, ~1% of routine spans" custom sampler through the in-memory interpreter.
+  The README's supported-GHC list is also corrected to name all three tested
+  compilers (9.6.7 / 9.8.4 / 9.10.3) rather than only 9.10.3.
 - http-client tracing wrapper (Phase 9), behind the new `http-client` cabal flag
   (off by default, so the base package does not depend on `http-client`):
   `Effectful.Tracing.Instrumentation.HttpClient` provides `httpLbsTraced`, which

@@ -178,10 +178,16 @@ up a local Jaeger with `docker compose`.
   propagation, OTel export). Start here to understand the internals.
 - [`docs/design-notes.md`](docs/design-notes.md): the chronological development
   history, phase by phase, behind that design.
-- [`examples/servant-app`](examples/servant-app): an end-to-end Servant service.
+- [`examples/servant-app`](examples/servant-app): an end-to-end Servant service
+  whose inbound and outbound spans join into one distributed trace in Jaeger.
+- [`examples/local-dev`](examples/local-dev): two small programs that need no
+  collector: a worker loop (one span per job, interpreter chosen at runtime,
+  error recording, a linked background trace) and a custom-sampler demo.
 
 ## Supported GHC
 
+- GHC 9.6.7
+- GHC 9.8.4
 - GHC 9.10.3
 
 ## License

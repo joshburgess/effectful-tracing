@@ -1,0 +1,6 @@
+-- Build these examples against the in-tree effectful-tracing with its default
+-- flags: no OpenTelemetry, WAI, or http-client dependencies are needed, and
+-- there is nothing external to run.
+packages:
+  .
+  ../../

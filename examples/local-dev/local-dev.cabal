@@ -1,0 +1,34 @@
+cabal-version:      3.0
+name:               local-dev
+version:            0
+synopsis:           effectful-tracing local-development examples (not published)
+build-type:         Simple
+
+-- Two small, self-contained programs that need no collector and no cabal flags:
+-- they run against the default in-tree library and print to your terminal.
+
+common shared
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    OverloadedStrings
+
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , effectful
+    , effectful-tracing
+    , text
+
+-- A worker loop with one span per job, an interpreter chosen at runtime, a
+-- failing job that records an Error span, and a linked background trace.
+executable worker
+  import:           shared
+  main-is:          Worker.hs
+  ghc-options:      -threaded -rtsopts -with-rtsopts=-N
+
+-- A custom Sampler (keep all priority spans, ~1% of routine ones) observed
+-- through the in-memory interpreter.
+executable sampling
+  import:           shared
+  main-is:          Sampling.hs
