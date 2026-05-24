@@ -53,6 +53,16 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `nothunks` dependency and its orphan instances are test-only, so the published
   package takes on no new dependency. This test is what surfaced the
   `spanParentContext` retention fixed above.
+- Compile-checked documentation examples: `Effectful.Tracing.CompileTest` now
+  mirrors every Haskell code block in `README.md`, `docs/tutorial.md`, and
+  `docs/cookbook.md` against the real API, so a renamed export or changed
+  signature turns the test suite red and flags the docs as stale. The blocks are
+  deliberately illustrative fragments (undefined placeholder names, scattered
+  imports, bare expressions), which neither cabal-docspec (it only evaluates
+  `>>>` examples, of which the project has none) nor markdown-unlit can compile
+  in place; the mirrors reproduce their API usage instead, stubbing the
+  placeholder types once. Examples that need a cabal flag (`wai`, `http-client`,
+  `otel`) are guarded with CPP so they are checked by the all-flags CI job.
 - Documentation and example (Phase 10): a guided [tutorial](docs/tutorial.md)
   from a pretty-printed trace to OpenTelemetry export against a local Jaeger, a
   [cookbook](docs/cookbook.md) of focused recipes (trace an existing function,
