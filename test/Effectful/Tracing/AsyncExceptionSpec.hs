@@ -63,9 +63,14 @@ tests =
           "the original message survives in the Error status"
           (statusMessageContains "kaboom" (spanStatus s))
     , testCase "a timeout cancellation finalizes the span" $ do
+        -- The window between starting the action and the timer firing must be
+        -- wide enough that the span is reliably open before the cancellation
+        -- arrives, even under a loaded parallel suite; the body then sleeps far
+        -- longer than the timeout so the timeout always wins. A tight timeout
+        -- here races the span-open and can cancel before any span exists.
         (result, spans) <-
           runTimed $
-            timeout 1000 (withSpan "slow" (liftIO (Conc.threadDelay 1000000)))
+            timeout 100000 (withSpan "slow" (liftIO (Conc.threadDelay 10000000)))
         result @?= Nothing
         s <- expectSpan "slow" spans
         assertErrorWithEvent s
