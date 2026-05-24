@@ -15,14 +15,16 @@ module Effectful.Tracing.SamplerSpec
 
 import Control.Monad (replicateM)
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 
 import Effectful (Eff, IOE, runEff)
 import Hedgehog (Property, evalIO, forAll, property, (===))
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (assertBool, testCase, (@?=))
+import Test.Tasty.HUnit (assertBool, assertFailure, testCase, (@?=))
 import Test.Tasty.Hedgehog (testProperty)
 
 import Effectful.Tracing (Tracer, withSpan)
+import Effectful.Tracing.Attribute (attributeKey, (.=))
 import Effectful.Tracing.Gen (genTraceId)
 import Effectful.Tracing.Internal.Ids
   ( SpanId
@@ -32,11 +34,13 @@ import Effectful.Tracing.Internal.Ids
   , traceIdFromHex
   )
 import Effectful.Tracing.Internal.Types
-  ( Span (spanContext)
+  ( Span (spanAttributes, spanContext)
   , SpanContext (..)
   , SpanKind (Internal)
+  , TraceState
   , defaultTraceFlags
   , emptyTraceState
+  , insertTraceState
   , isSampled
   , setSampled
   )
@@ -49,7 +53,7 @@ import Effectful.Tracing.Sampler
   ( Sampler (Sampler, shouldSample)
   , SamplerInput (SamplerInput)
   , SamplingDecision (Drop, RecordAndSample, RecordOnly)
-  , SamplingResult (decision)
+  , SamplingResult (SamplingResult, decision)
   , alwaysOff
   , alwaysOn
   , defaultParentBasedConfig
@@ -106,6 +110,16 @@ tests =
             spans <- captureWith recordOnly twoSpans
             length spans @?= 2
             assertBool "no captured span is flagged sampled" (not (any sampledFlag spans))
+        , testCase "sampler extra attributes are attached to the captured span" $ do
+            spans <- captureWith extraAttrSampler (withSpan "s" (pure ()))
+            s <- single spans
+            assertBool
+              "the sampler-supplied attribute is present"
+              (any ((== "sampler.tag") . attributeKey) (spanAttributes s))
+        , testCase "sampler trace-state replacement is applied to the span context" $ do
+            spans <- captureWith stateSampler (withSpan "s" (pure ()))
+            s <- single spans
+            spanContextTraceState (spanContext s) @?= samplerState
         ]
     ]
 
@@ -144,6 +158,26 @@ captureWith sampler prog = do
 
 recordOnly :: Sampler
 recordOnly = Sampler "RecordOnly" (\_ -> pure (simpleResult RecordOnly))
+
+-- | A sampler that records and tags every span with a fixed attribute.
+extraAttrSampler :: Sampler
+extraAttrSampler =
+  Sampler "WithExtraAttribute" $ \_ ->
+    pure (SamplingResult RecordAndSample ["sampler.tag" .= ("set" :: Text)] Nothing)
+
+-- | A sampler that records and replaces the trace state with 'samplerState'.
+stateSampler :: Sampler
+stateSampler =
+  Sampler "WithTraceState" $ \_ ->
+    pure (SamplingResult RecordAndSample [] (Just samplerState))
+
+-- | The trace state 'stateSampler' installs.
+samplerState :: TraceState
+samplerState = fromMaybe emptyTraceState (insertTraceState "vendor" "1" emptyTraceState)
+
+single :: [Span] -> IO Span
+single [s] = pure s
+single other = assertFailure ("expected exactly one span, got " <> show (length other))
 
 sampledFlag :: Span -> Bool
 sampledFlag = isSampled . spanContextTraceFlags . spanContext

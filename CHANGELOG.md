@@ -12,6 +12,16 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- Expanded unit and property coverage for the pure surface that the interpreter
+  tests previously only exercised indirectly: `Effectful.Tracing.TypesSpec`
+  (status-transition rules, trace-state dedup/capacity/validation, trace-flags
+  bit manipulation), `Effectful.Tracing.AttributeSpec` (one case per
+  `ToAttributeValue` instance plus the int/float widening properties),
+  `Effectful.Tracing.IdsSpec` (hex parsing, byte construction, and validity
+  checks), and `Effectful.Tracing.LifecycleSpec` (remote-parent continuation,
+  in-thread linked roots, explicit start times, and the status/exception
+  semantics). `Effectful.Tracing.SamplerSpec` also now asserts that a sampler's
+  extra attributes and replacement trace state are applied to the opened span.
 - Robustness and translation property tests: a fuzz suite
   (`Effectful.Tracing.FuzzSpec`) that feeds uniformly random and
   traceparent-shaped input to `extractContext`, `traceIdFromHex`,

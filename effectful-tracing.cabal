@@ -126,16 +126,20 @@ test-suite effectful-tracing-test
   main-is:        Main.hs
   ghc-options:    -threaded -rtsopts "-with-rtsopts=-N"
   other-modules:
+    Effectful.Tracing.AttributeSpec
     Effectful.Tracing.CompileTest
     Effectful.Tracing.ConcurrentSpec
     Effectful.Tracing.FuzzSpec
     Effectful.Tracing.Gen
+    Effectful.Tracing.IdsSpec
     Effectful.Tracing.InMemorySpec
+    Effectful.Tracing.LifecycleSpec
     Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PrettyPrintSpec
     Effectful.Tracing.PropagationSpec
     Effectful.Tracing.PropertySpec
     Effectful.Tracing.SamplerSpec
+    Effectful.Tracing.TypesSpec
 
   build-depends:
     , base              >=4.20  && <4.21
