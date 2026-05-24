@@ -53,6 +53,14 @@ import Effectful.Tracing.Propagation
   , traceparentHeader
   , tracestateHeader
   )
+import Effectful.Tracing.Propagation.B3
+  ( b3FlagsHeader
+  , b3Header
+  , b3SampledHeader
+  , b3SpanIdHeader
+  , b3TraceIdHeader
+  , extractContextB3
+  )
 
 tests :: TestTree
 tests =
@@ -60,6 +68,8 @@ tests =
     "Parser robustness (fuzz)"
     [ testProperty "extractContext is total on arbitrary headers" prop_extractContextTotal
     , testProperty "extractContext is total on traceparent-shaped input" prop_extractContextShaped
+    , testProperty "extractContextB3 is total on arbitrary headers" prop_extractB3Total
+    , testProperty "extractContextB3 is total on b3-shaped input" prop_extractB3Shaped
     , testProperty "traceIdFromHex is total on arbitrary text" prop_traceIdFromHexTotal
     , testProperty "spanIdFromHex is total on arbitrary text" prop_spanIdFromHexTotal
     , testProperty "traceStateFromHeader is total and capped" prop_traceStateFromHeaderTotal
@@ -82,6 +92,39 @@ prop_extractContextShaped :: Property
 prop_extractContextShaped = property $ do
   tp <- forAll genTraceparentish
   ok <- eval (validContext (extractContext [(traceparentHeader, tp)]))
+  assert ok
+
+-- | 'extractContextB3' is likewise total: feeding random bytes to the single
+-- @b3@ header and the multi-header fields together must yield a clean rejection
+-- or a context whose ids satisfy the validity invariant.
+prop_extractB3Total :: Property
+prop_extractB3Total = property $ do
+  single <- forAll genFuzzBytes
+  tid <- forAll genFuzzBytes
+  sid <- forAll genFuzzBytes
+  samp <- forAll genFuzzBytes
+  flags <- forAll genFuzzBytes
+  ok <-
+    eval
+      ( validContext
+          ( extractContextB3
+              [ (b3Header, single)
+              , (b3TraceIdHeader, tid)
+              , (b3SpanIdHeader, sid)
+              , (b3SampledHeader, samp)
+              , (b3FlagsHeader, flags)
+              ]
+          )
+      )
+  assert ok
+
+-- | The same totality check biased toward @b3@-shaped single-header input
+-- (hyphen-joined hex-ish fields), so the field-count, id, and sampling branches
+-- are exercised rather than bounced off the first malformed byte.
+prop_extractB3Shaped :: Property
+prop_extractB3Shaped = property $ do
+  single <- forAll genB3ish
+  ok <- eval (validContext (extractContextB3 [(b3Header, single)]))
   assert ok
 
 -- | 'traceIdFromHex' returns 'Nothing' or a 16-byte id; nothing else, and never
@@ -132,6 +175,23 @@ genFuzzText =
     [ Gen.text (Range.linear 0 80) Gen.unicode
     , Gen.text (Range.linear 0 80) (Gen.element ("-=,; \t0123456789abcdefABCDEFxyz" :: String))
     ]
+
+-- | A @b3@-shaped single-header value: 1 to 4 hyphen-joined fields, each a
+-- hex-ish token (occasionally a known-good id or a real sampling token), so the
+-- generator reaches the id and sampling branches of the B3 parser.
+genB3ish :: Gen ByteString
+genB3ish = do
+  fields <- Gen.list (Range.linear 1 4) genField
+  pure (encodeUtf8 (T.intercalate "-" fields))
+  where
+    genField =
+      Gen.choice
+        [ Gen.text (Range.linear 0 34) (Gen.element ("0123456789abcdef" :: String))
+        , pure "4bf92f3577b34da6a3ce929d0e0e4736"
+        , pure "a3ce929d0e0e4736"
+        , pure "00f067aa0ba902b7"
+        , Gen.element ["0", "1", "d", ""]
+        ]
 
 -- | A @traceparent@-shaped value: 1 to 6 hyphen-joined fields, each a hex-ish
 -- token of varying length (occasionally a known-good id or version, occasionally

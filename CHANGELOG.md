@@ -213,8 +213,17 @@ context propagation, and the WAI / http-client instrumentation helpers.
   failing the whole extraction (per the spec's resilience guidance). Tested with
   the W3C `traceparent` test vectors plus inject/extract round-trips through the
   in-memory interpreter.
-- New library dependency on `http-types` (for the `HeaderName` type used by the
-  propagation API), pinned to `>=0.12 && <0.13`.
+- `Effectful.Tracing.Propagation.B3`, an alternative propagator for
+  infrastructure that speaks B3 (Zipkin, Envoy, older meshes) rather than W3C
+  Trace Context. It supports both wire encodings: the single `b3` header
+  (`injectContextB3`) and the legacy `X-B3-*` multi-header form
+  (`injectContextB3Multi`). `extractContextB3` reads either, preferring the single
+  header when present. A 64-bit B3 trace id is left-padded to the library's
+  128-bit width, the sampling field (`1` / `0` / `d`) maps onto the sampled bit
+  (debug treated as accept), and a deferred or absent decision defaults to
+  unsampled. It is built directly against the library's own `SpanContext` like
+  the W3C propagator (no SDK dependency, no new dependency, no cabal flag) and is
+  tested with single- and multi-header vectors plus a fuzz totality property.
 - Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
   span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
   `asyncInstrumented`, `concurrentlyInstrumented`, and

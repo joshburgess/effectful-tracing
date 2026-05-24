@@ -173,6 +173,31 @@ consume headers work =
   maybe id withRemoteParent (extractContext headers) work
 ```
 
+## Interoperate with B3 (Zipkin) headers
+
+When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,
+Envoy, older meshes), swap in the B3 propagator from
+`Effectful.Tracing.Propagation.B3`. It mirrors the W3C functions: `extractContextB3`
+reads either the single `b3` header or the legacy `X-B3-*` multi-header form (the
+single header wins when both are present), and `injectContextB3` writes the single
+header (`injectContextB3Multi` writes the multi-header form).
+
+```haskell
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer, withRemoteParent)
+import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
+import Network.HTTP.Types (Header)
+
+-- inbound: continue a B3 caller's trace
+b3Consume :: (Tracer :> es) => [Header] -> Eff es a -> Eff es a
+b3Consume headers =
+  maybe id withRemoteParent (extractContextB3 headers)
+
+-- outbound: forward the active span as a single b3 header
+b3Forward :: (Tracer :> es) => Eff es [Header]
+b3Forward = injectContextB3
+```
+
 ## Name server spans by route, not just method
 
 `traceMiddleware` names each server span after the request method (`GET`,

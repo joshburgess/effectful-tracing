@@ -97,6 +97,7 @@ library
     Effectful.Tracing.Interpreter.NoOp
     Effectful.Tracing.Interpreter.PrettyPrint
     Effectful.Tracing.Propagation
+    Effectful.Tracing.Propagation.B3
     Effectful.Tracing.Sampler
     Effectful.Tracing.SemConv
     Effectful.Tracing.Internal.Clock
@@ -156,6 +157,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PrettyPrintLeakSpec
     Effectful.Tracing.PrettyPrintSpec
+    Effectful.Tracing.Propagation.B3Spec
     Effectful.Tracing.PropagationSpec
     Effectful.Tracing.PropertySpec
     Effectful.Tracing.SamplerSpec

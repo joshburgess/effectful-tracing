@@ -23,6 +23,7 @@ import Effectful.Tracing.LifecycleSpec qualified as LifecycleSpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintLeakSpec qualified as PrettyPrintLeakSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
+import Effectful.Tracing.Propagation.B3Spec qualified as B3Spec
 import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
@@ -60,6 +61,7 @@ main =
           , SamplerSpec.tests
           , ConcurrentSpec.tests
           , PropagationSpec.tests
+          , B3Spec.tests
           , FuzzSpec.tests
           , ThunkSpec.tests
           , AsyncExceptionSpec.tests

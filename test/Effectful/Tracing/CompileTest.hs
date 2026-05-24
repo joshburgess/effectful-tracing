@@ -64,6 +64,7 @@ import Effectful.Tracing
   , (.=)
   )
 import Effectful.Tracing.Attribute (Attribute (Attribute), AttributeValue (AttrBool))
+import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Concurrent (concurrentlyInstrumented, forkLinked)
 import Effectful.Tracing.Interpreter.InMemory
   ( newCapturedSpans
@@ -160,6 +161,8 @@ docExamples =
     `seq` (cbRiskyCharge :: Eff '[Tracer] ())
     `seq` (cbPrioritySampledRun :: Eff '[Tracer, IOE] () -> IO [Span])
     `seq` (cbConsume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
+    `seq` (cbB3Consume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
+    `seq` (cbB3Forward :: Eff '[Tracer] [Header])
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
     `seq` (cbPrettyRun :: Eff '[Tracer, IOE] () -> IO ())
@@ -260,6 +263,15 @@ cbPrioritySampledRun action = runEff $ do
 cbConsume :: Tracer :> es => [Header] -> Eff es a -> Eff es a
 cbConsume headers =
   maybe id withRemoteParent (extractContext headers)
+
+-- cookbook: "Interoperate with B3 (Zipkin) headers" (continue a B3 remote parent)
+cbB3Consume :: Tracer :> es => [Header] -> Eff es a -> Eff es a
+cbB3Consume headers =
+  maybe id withRemoteParent (extractContextB3 headers)
+
+-- cookbook: "Interoperate with B3 (Zipkin) headers" (forward as a single b3 header)
+cbB3Forward :: Tracer :> es => Eff es [Header]
+cbB3Forward = injectContextB3
 
 -- cookbook: "Instrument a long-running worker"
 cbWorker :: (Tracer :> es, Queue :> es) => Eff es ()
