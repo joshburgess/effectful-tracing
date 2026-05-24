@@ -40,6 +40,7 @@ module Effectful.Tracing.Interpreter.InMemory
   , newCapturedSpans
   , readCapturedSpans
   , runTracerInMemory
+  , runTracerInMemoryWith
 
     -- * Querying captured spans
   , findSpan
@@ -60,6 +61,7 @@ import Effectful (Eff, IOE, (:>))
 
 import Effectful.Tracing.Effect (Tracer)
 import Effectful.Tracing.Internal.Live (interpretTracer)
+import Effectful.Tracing.Sampler (Sampler, alwaysOn)
 import Effectful.Tracing.Internal.Types
   ( Span (spanContext, spanName, spanParentContext)
   , SpanContext (spanContextSpanId, spanContextTraceId)
@@ -78,16 +80,27 @@ newCapturedSpans = liftIO (CapturedSpans <$> newTVarIO Seq.empty)
 readCapturedSpans :: IOE :> es => CapturedSpans -> Eff es [Span]
 readCapturedSpans (CapturedSpans buffer) = liftIO (toList <$> readTVarIO buffer)
 
--- | Capture completed spans into the given buffer. Scoped actions run inside a
--- fresh child span; emit operations annotate the lexically-current span and are
--- silent no-ops when there is none.
+-- | Capture completed spans into the given buffer, sampling every span
+-- ('alwaysOn'). Scoped actions run inside a fresh child span; emit operations
+-- annotate the lexically-current span and are silent no-ops when there is none.
 runTracerInMemory
   :: IOE :> es
   => CapturedSpans
   -> Eff (Tracer : es) a
   -> Eff es a
-runTracerInMemory (CapturedSpans buffer) =
-  interpretTracer (\completed -> atomically (modifyTVar' buffer (|> completed)))
+runTracerInMemory = runTracerInMemoryWith alwaysOn
+
+-- | Like 'runTracerInMemory', but with a caller-chosen 'Sampler'. There is no
+-- export step here, so 'RecordOnly' and 'RecordAndSample' both capture the
+-- span; only 'Drop' omits it.
+runTracerInMemoryWith
+  :: IOE :> es
+  => Sampler
+  -> CapturedSpans
+  -> Eff (Tracer : es) a
+  -> Eff es a
+runTracerInMemoryWith sampler (CapturedSpans buffer) =
+  interpretTracer sampler (\completed -> atomically (modifyTVar' buffer (|> completed)))
 
 -- | Find the first captured span with the given name.
 findSpan :: Text -> [Span] -> Maybe Span

@@ -8,6 +8,21 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- Sampling (Phase 6): `Effectful.Tracing.Sampler` with a `Sampler`, the
+  `SamplingDecision` (`Drop` / `RecordOnly` / `RecordAndSample`),
+  `SamplingResult`, and `SamplerInput` data model, plus the four built-in
+  samplers from the OpenTelemetry specification: `alwaysOn`, `alwaysOff`,
+  `traceIdRatioBased` (a deterministic fraction keyed on the trace id, so every
+  span in a trace shares one decision), and `parentBased` (inherit the parent's
+  decision, fall back to a root sampler) configured via `ParentBasedConfig` /
+  `defaultParentBasedConfig`. The sampler is consulted once when a span opens:
+  `RecordAndSample` sets the sampled trace flag, `RecordOnly` records without
+  it, and `Drop` suppresses the interpreter's sink while still running the
+  scoped action. `shouldSample` is plain `IO`, so samplers are leaf decision
+  functions that are easy to call and test. Both span-opening interpreters gained
+  a sampler-aware entry point (`runTracerInMemoryWith`, and a `sampler` field on
+  `PrettyPrintConfig`); the existing entry points default to `alwaysOn`, so
+  behavior is unchanged unless a sampler is supplied.
 - Pretty-print interpreter (Phase 5): `runTracerPretty`, in
   `Effectful.Tracing.Interpreter.PrettyPrint`, writes a human-readable,
   tree-shaped rendering of each finished trace to a `Handle` (usually

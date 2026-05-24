@@ -14,6 +14,7 @@ import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
+import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
 
 main :: IO ()
 main =
@@ -25,5 +26,6 @@ main =
         , NoOpSpec.tests
         , InMemorySpec.tests
         , PrettyPrintSpec.tests
+        , SamplerSpec.tests
         ]
     )

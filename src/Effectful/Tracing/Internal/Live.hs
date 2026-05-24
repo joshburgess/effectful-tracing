@@ -30,8 +30,10 @@ module Effectful.Tracing.Internal.Live
   ) where
 
 import Control.Exception (SomeException, displayException)
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -66,6 +68,13 @@ import Effectful.Tracing.Internal.Types
   , SpanStatus (Error, Unset)
   , defaultTraceFlags
   , emptyTraceState
+  , setSampled
+  )
+import Effectful.Tracing.Sampler
+  ( Sampler (shouldSample)
+  , SamplerInput (SamplerInput)
+  , SamplingDecision (Drop, RecordAndSample)
+  , SamplingResult (decision, extraAttributes, newTraceState)
   )
 
 -- | The mutable, accumulating part of an in-flight span. Attributes and events
@@ -88,10 +97,11 @@ data ActiveSpan = ActiveSpan
   , activeStart :: !Timestamp
   , activeLinks :: ![Link]
   , activeBuilder :: !(IORef SpanBuilder)
+  , activeDecision :: !SamplingDecision
   }
 
 -- | Interpret 'Tracer' by opening a real span for each scoped action and
--- handing every completed 'Span' to the given sink.
+-- handing every completed, non-dropped 'Span' to the given sink.
 --
 -- The active span is lexical: scoped actions run inside a fresh child span
 -- installed for their scope only, emit operations annotate the
@@ -100,24 +110,35 @@ data ActiveSpan = ActiveSpan
 -- sink sees each span exactly once, with an 'Error' status if the action was
 -- killed, and exceptions still propagate (the interpreter records, it does not
 -- swallow).
+--
+-- The 'Sampler' is consulted once per span, at start. A 'Drop' decision still
+-- runs the scoped action (the user's code must execute) and still establishes a
+-- lexical span for nested operations, but the completed span is not handed to
+-- the sink; 'RecordOnly' and 'RecordAndSample' both reach the sink. The
+-- @sampled@ trace flag is set exactly when the decision is 'RecordAndSample',
+-- and the sampler's extra attributes and trace-state replacement are applied to
+-- the span.
 interpretTracer
   :: IOE :> es
-  => (Span -> IO ())
+  => Sampler
+  -> (Span -> IO ())
   -- ^ What to do with each completed span. Runs on the thread that closed the
   -- span; keep it cheap and non-blocking.
   -> Eff (Tracer : es) a
   -> Eff es a
-interpretTracer onComplete =
+interpretTracer sampler onComplete =
   reinterpret (runReader (Nothing :: Maybe ActiveSpan)) $ \env -> \case
     WithSpan name args action -> do
       parent <- ask
-      active <- openSpan name args parent
+      active <- openSpan sampler name args parent
       Dynamic.localSeqUnlift env $ \unlift -> do
         let use _ = local (const (Just active)) (unlift action)
         (result, ()) <-
           generalBracket
             (pure ())
-            (\_ exitCase -> finalizeSpan active exitCase >>= liftIO . onComplete)
+            (\_ exitCase -> do
+                completed <- finalizeSpan active exitCase
+                when (activeDecision active /= Drop) (liftIO (onComplete completed)))
             use
         pure result
     AddAttribute key value ->
@@ -147,35 +168,44 @@ withActive
 withActive f = ask >>= maybe (pure ()) f
 
 -- | Build a fresh 'ActiveSpan': inherit trace identity from the parent (or mint
--- a new trace at a root), allocate a span id, record the start time, and seed
--- the builder with the initial attributes.
+-- a new trace at a root), consult the sampler, allocate a span id, set the
+-- @sampled@ flag and any sampler-supplied attributes and trace state, record
+-- the start time, and seed the builder.
 openSpan
   :: IOE :> es
-  => Text
+  => Sampler
+  -> Text
   -> SpanArguments
   -> Maybe ActiveSpan
   -> Eff es ActiveSpan
-openSpan name args parent = do
+openSpan sampler name args parent = do
   let parentContext = activeContext <$> parent
-  (traceId, flags, state) <- case parentContext of
+  (traceId, baseFlags, baseState) <- case parentContext of
     Just pc -> pure (spanContextTraceId pc, spanContextTraceFlags pc, spanContextTraceState pc)
     Nothing -> do
       traceId <- newTraceId
       pure (traceId, defaultTraceFlags, emptyTraceState)
+  -- Built positionally: SamplerInput's field names (spanName, spanKind, links)
+  -- collide with Span and SpanArguments selectors, so its labels are not
+  -- imported here.
+  result <-
+    liftIO . shouldSample sampler $
+      SamplerInput parentContext traceId name (kind args) (attributes args) (links args)
   spanId <- newSpanId
-  let context =
+  let sampled = decision result == RecordAndSample
+      context =
         SpanContext
           { spanContextTraceId = traceId
           , spanContextSpanId = spanId
-          , spanContextTraceFlags = flags
-          , spanContextTraceState = state
+          , spanContextTraceFlags = setSampled sampled baseFlags
+          , spanContextTraceState = fromMaybe baseState (newTraceState result)
           , spanContextIsRemote = False
           }
   start <- maybe getTimestamp (pure . Timestamp) (startTime args)
   builder <-
     liftIO . newIORef $
       SpanBuilder
-        { builderAttributes = reverse (attributes args)
+        { builderAttributes = reverse (attributes args <> extraAttributes result)
         , builderEvents = []
         , builderStatus = Unset
         }
@@ -188,6 +218,7 @@ openSpan name args parent = do
       , activeStart = start
       , activeLinks = links args
       , activeBuilder = builder
+      , activeDecision = decision result
       }
 
 -- | Finalize a span: record its end time, fold in an error status and exception

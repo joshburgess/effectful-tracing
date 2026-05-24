@@ -28,6 +28,18 @@ module Effectful.Tracing
     -- * Interpreters
   , runTracerNoOp
 
+    -- * Sampling
+  , SamplingDecision (..)
+  , SamplingResult (..)
+  , Sampler (..)
+  , SamplerInput
+  , alwaysOn
+  , alwaysOff
+  , traceIdRatioBased
+  , parentBased
+  , ParentBasedConfig (..)
+  , defaultParentBasedConfig
+
     -- * Attributes
   , module Effectful.Tracing.Attribute
 
@@ -88,6 +100,18 @@ import Effectful.Tracing.Effect
   , withSpan'
   )
 import Effectful.Tracing.Interpreter.NoOp (runTracerNoOp)
+import Effectful.Tracing.Sampler
+  ( ParentBasedConfig (..)
+  , Sampler (..)
+  , SamplerInput
+  , SamplingDecision (..)
+  , SamplingResult (..)
+  , alwaysOff
+  , alwaysOn
+  , defaultParentBasedConfig
+  , parentBased
+  , traceIdRatioBased
+  )
 import Effectful.Tracing.Internal.Clock (Timestamp (..), getTimestamp)
 import Effectful.Tracing.Internal.Ids
   ( SpanId

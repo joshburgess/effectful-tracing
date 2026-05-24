@@ -53,6 +53,7 @@ library
     Effectful.Tracing.Interpreter.InMemory
     Effectful.Tracing.Interpreter.NoOp
     Effectful.Tracing.Interpreter.PrettyPrint
+    Effectful.Tracing.Sampler
     Effectful.Tracing.Internal.Clock
     Effectful.Tracing.Internal.Ids
     Effectful.Tracing.Internal.Live
@@ -82,6 +83,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PrettyPrintSpec
     Effectful.Tracing.PropertySpec
+    Effectful.Tracing.SamplerSpec
 
   build-depends:
     , base              >=4.20  && <4.21

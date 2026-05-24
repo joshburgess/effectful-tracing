@@ -81,6 +81,7 @@ import Effectful.Tracing.Attribute
   , AttributeValue (..)
   )
 import Effectful.Tracing.Effect (Tracer)
+import Effectful.Tracing.Sampler (Sampler, alwaysOn)
 import Effectful.Tracing.Internal.Clock (Timestamp (Timestamp))
 import Effectful.Tracing.Internal.Ids (SpanId, TraceId, traceIdToHex)
 import Effectful.Tracing.Internal.Live (interpretTracer)
@@ -116,6 +117,10 @@ data PrettyPrintConfig = PrettyPrintConfig
   -- ^ Print each span's events beneath it.
   , timeFormat :: !TimeFormat
   -- ^ How span times are shown.
+  , sampler :: !Sampler
+  -- ^ Which spans to print. The \"export\" step here is printing, so 'Drop'
+  -- omits a span and both other decisions print it. 'renderTrace' ignores this
+  -- field.
   }
 
 -- | A reasonable default: no color, attributes and events shown, durations
@@ -128,6 +133,7 @@ defaultPrettyPrintConfig h =
     , showAttributes = True
     , showEvents = True
     , timeFormat = DurationOnly
+    , sampler = alwaysOn
     }
 
 -- | Interpret 'Tracer' by rendering each finished trace to the configured
@@ -139,7 +145,7 @@ runTracerPretty
   -> Eff es a
 runTracerPretty config eff = do
   traces <- liftIO (newTVarIO Map.empty)
-  interpretTracer (flushOnRoot config traces) eff
+  interpretTracer (sampler config) (flushOnRoot config traces) eff
 
 -- | Accumulate a completed span under its trace id; when the span is a root,
 -- pop the whole trace and render it.
