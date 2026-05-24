@@ -10,14 +10,19 @@
 --
 -- The no-op overhead benchmark (Phase 3): a chain of @n@ trivial operations run
 -- plain versus the same chain with each operation wrapped in @withSpan@ under
--- 'runTracerNoOp'. The @bcompare@ entry reports the traced run as a ratio of the
+-- 'runTracerNoOp'. The comparison entries report the traced run as a ratio of the
 -- plain baseline within a single run, since absolute timings are not comparable
 -- across machines.
 --
 -- Read the ratio, not the absolute numbers. The target is < 1.05 (5% overhead),
 -- measured on a quiet, dedicated machine. CI runners are noisy shared VMs, so a
--- 5% gate would flap; treat the CI number as informational and only investigate
--- a gross regression (say > 1.20).
+-- 5% gate would flap; the @realistic-op@ comparison therefore uses
+-- 'bcompareWithin' with a deliberately loose upper bound of @1.20@, so the
+-- benchmark process exits non-zero (failing the CI gate) only on a gross
+-- regression, not on ordinary runner noise. The @trivial-op@ comparison is left
+-- as a plain 'bcompare': its baseline is essentially free, so its ratio is the
+-- raw per-'withSpan' dispatch cost and is inherently large, which is informative
+-- but not a meaningful pass/fail threshold.
 module Main (main) where
 
 import Control.Monad (foldM)
@@ -30,7 +35,7 @@ import Data.List (foldl')
 
 import Effectful (Eff, runEff, (:>))
 import Effectful.Tracing (Tracer, runTracerNoOp, withSpan)
-import Test.Tasty.Bench (bcompare, bench, bgroup, defaultMain, nfIO)
+import Test.Tasty.Bench (bcompare, bcompareWithin, bench, bgroup, defaultMain, nfIO)
 
 -- | A chain of @n@ accumulating operations, each doing @work@ units of
 -- computation, with no tracing involved.
@@ -68,7 +73,11 @@ main =
       bgroup
         "realistic-op"
         [ bench "plain" (nfIO (runEff (plainChain perOp n)))
-        , bcompare "$NF == \"plain\" && $(NF-1) == \"realistic-op\"" $
+        , -- Fail the run (and so the CI gate) only if the traced chain is more
+          -- than 1.20x the plain baseline; a speedup or any ratio at or below
+          -- 1.20 passes. The lower bound is 0 because traced is never expected
+          -- to be meaningfully faster than plain.
+          bcompareWithin 0 1.20 "$NF == \"plain\" && $(NF-1) == \"realistic-op\"" $
             bench "withSpan-noop" (nfIO (runEff (runTracerNoOp (tracedChain perOp n))))
         ]
     ]

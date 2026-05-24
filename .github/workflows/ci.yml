@@ -16,16 +16,30 @@ permissions:
 
 jobs:
   build-test:
-    name: build & test (GHC ${{ matrix.ghc }})
-    runs-on: ubuntu-latest
+    name: build & test (${{ matrix.os }}, GHC ${{ matrix.ghc }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         ghc: ["9.6.7", "9.8.4", "9.10.3"]
+        # Keep CI bounded: the full GHC matrix runs on Linux, while macOS and
+        # Windows build and test only the latest supported GHC (where a
+        # platform-specific break is most likely to surface).
+        exclude:
+          - os: macos-latest
+            ghc: "9.6.7"
+          - os: macos-latest
+            ghc: "9.8.4"
+          - os: windows-latest
+            ghc: "9.6.7"
+          - os: windows-latest
+            ghc: "9.8.4"
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up GHC and cabal
+        id: setup
         uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -37,7 +51,9 @@ jobs:
       - name: Cache cabal store
         uses: actions/cache@v4
         with:
-          path: ~/.local/state/cabal/store
+          # The cabal store lives in different places per OS; take the path the
+          # setup action reports rather than hard-coding the Linux location.
+          path: ${{ steps.setup.outputs.cabal-store }}
           key: ${{ runner.os }}-ghc${{ matrix.ghc }}-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
           restore-keys: |
             ${{ runner.os }}-ghc${{ matrix.ghc }}-
@@ -211,6 +227,36 @@ jobs:
 
       - name: Test (prefer oldest)
         run: cabal test all --prefer-oldest --test-show-details=direct
+
+  bench-gate:
+    name: benchmark regression gate (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        id: setup
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc9.10.3-bench-${{ hashFiles('effectful-tracing.cabal', 'cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-bench-
+
+      # Run the tasty-bench suite. The realistic-op comparison uses
+      # 'bcompareWithin' with a 1.20 upper bound, so the benchmark process exits
+      # non-zero (failing this job) on a gross per-span overhead regression. The
+      # bound is deliberately loose because CI runners are noisy shared VMs; this
+      # gate catches order-of-magnitude regressions, not the 5% target tracked on
+      # a quiet machine.
+      - name: Run benchmark regression gate
+        run: cabal bench effectful-tracing-bench
 
   publish-readiness:
     name: publish readiness (cabal check + build from sdist)

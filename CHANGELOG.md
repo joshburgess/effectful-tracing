@@ -40,6 +40,18 @@ context propagation, and the WAI / http-client instrumentation helpers.
   Warp server in the http-client tests) have oldest published versions that
   predate the supported GHC range and fail to compile there, so minimizing them
   would test third parties' GHC compatibility rather than our bounds.
+- macOS and Windows coverage in CI. The build-and-test job now runs on a
+  three-OS matrix: the full GHC range (9.6, 9.8, 9.10) on Linux, and the latest
+  supported GHC on macOS and Windows, where a platform-specific break (path
+  handling, line endings, the temp-file based interpreter tests) is most likely
+  to surface. The cabal store cache path is taken from the setup action's output
+  rather than hard-coded, so it resolves correctly on every runner.
+- A `bench-gate` CI job that runs the `tasty-bench` suite as a regression gate.
+  The realistic-op comparison uses `bcompareWithin` with a 1.20 upper bound, so
+  the benchmark process exits non-zero (failing the job) on a gross per-span
+  overhead regression. The bound is deliberately loose because CI runners are
+  noisy shared VMs: the gate catches order-of-magnitude regressions, while the
+  tighter 5% target is tracked on a quiet machine.
 - New `secure-ids` cabal flag (off by default). When enabled, trace and span
   identifiers are minted from `crypton`'s cryptographically secure system
   entropy instead of the default fast splitmix PRNG, for callers who need ids
