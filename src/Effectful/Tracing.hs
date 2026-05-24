@@ -6,13 +6,27 @@
 -- Maintainer  : joshualoganburgess@gmail.com
 -- Stability   : experimental
 --
--- The public surface of @effectful-tracing@. As of Phase 1 this re-exports the
--- core, effect-system-independent data model: identifiers, attributes, trace
--- flags and state, and the immutable 'Span' record. The @Tracer@ effect and the
--- interpreters are layered on top in later phases.
+-- The public surface of @effectful-tracing@. This re-exports the core,
+-- effect-system-independent data model (identifiers, attributes, trace flags
+-- and state, the immutable 'Span' record) together with the 'Tracer' effect and
+-- its smart-constructor API. Interpreters are layered on top in later phases.
 module Effectful.Tracing
-  ( -- * Attributes
-    module Effectful.Tracing.Attribute
+  ( -- * The tracing effect
+    Tracer
+  , withSpan
+  , withSpan'
+  , addAttribute
+  , addAttributes
+  , addEvent
+  , recordException
+  , setStatus
+  , getActiveSpan
+  , SpanArguments (..)
+  , defaultSpanArguments
+  , transitionStatus
+
+    -- * Attributes
+  , module Effectful.Tracing.Attribute
 
     -- * Identifiers
   , TraceId
@@ -56,6 +70,20 @@ module Effectful.Tracing
   ) where
 
 import Effectful.Tracing.Attribute
+import Effectful.Tracing.Effect
+  ( SpanArguments (..)
+  , Tracer
+  , addAttribute
+  , addAttributes
+  , addEvent
+  , defaultSpanArguments
+  , getActiveSpan
+  , recordException
+  , setStatus
+  , transitionStatus
+  , withSpan
+  , withSpan'
+  )
 import Effectful.Tracing.Internal.Clock (Timestamp (..), getTimestamp)
 import Effectful.Tracing.Internal.Ids
   ( SpanId

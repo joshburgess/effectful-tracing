@@ -8,6 +8,21 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- `Tracer` effect (Phase 2): tracing modeled as a dynamic `effectful` effect.
+  - The effect with one higher-order operation (`WithSpan`) and first-order
+    emit operations (`AddAttribute`, `AddAttributes`, `AddEvent`,
+    `RecordException`, `SetStatus`, `GetActiveSpan`), in
+    `Effectful.Tracing.Effect`.
+  - `SpanArguments` record (`kind`, `attributes`, `links`, `startTime`) and
+    `defaultSpanArguments`.
+  - Smart constructors (`withSpan`, `withSpan'`, `addAttribute`,
+    `addAttributes`, `addEvent`, `recordException`, `setStatus`,
+    `getActiveSpan`), each with a Haddock usage example, re-exported from
+    `Effectful.Tracing` with `Tracer` kept abstract.
+  - `transitionStatus`, the single shared encoding of the OpenTelemetry span
+    status transition rules (Ok is final; never downgrade to Unset).
+  - A compile-only test proving the public API typechecks.
+  - No interpreter yet: user code can be written against `Tracer` but not run.
 - Core data model (Phase 1): the effect-system-independent types every
   interpreter shares.
   - `TraceId` (16 bytes) and `SpanId` (8 bytes) with fast-PRNG generation,
