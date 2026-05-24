@@ -50,6 +50,7 @@ library
     Effectful.Tracing
     Effectful.Tracing.Attribute
     Effectful.Tracing.Effect
+    Effectful.Tracing.Interpreter.InMemory
     Effectful.Tracing.Interpreter.NoOp
     Effectful.Tracing.Internal.Clock
     Effectful.Tracing.Internal.Ids
@@ -58,9 +59,11 @@ library
   build-depends:
     , base           >=4.20  && <4.21
     , bytestring     >=0.12  && <0.13
+    , containers     >=0.6   && <0.8
     , effectful-core ==2.6.1.0
     , hashable       >=1.4   && <1.6
     , random         >=1.2.1 && <1.4
+    , stm            >=2.5   && <2.6
     , text           >=2.1   && <2.2
     , time           >=1.12  && <1.15
     , vector         >=0.13  && <0.14
@@ -73,11 +76,13 @@ test-suite effectful-tracing-test
   other-modules:
     Effectful.Tracing.CompileTest
     Effectful.Tracing.Gen
+    Effectful.Tracing.InMemorySpec
     Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PropertySpec
 
   build-depends:
     , base              >=4.20  && <4.21
+    , containers        >=0.6   && <0.8
     , effectful-core    ==2.6.1.0
     , effectful-tracing
     , hedgehog          >=1.4   && <1.6

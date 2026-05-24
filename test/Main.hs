@@ -10,6 +10,7 @@ module Main (main) where
 import Test.Tasty (defaultMain, testGroup)
 
 import Effectful.Tracing.CompileTest qualified as CompileTest
+import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 
@@ -18,5 +19,9 @@ main =
   defaultMain
     ( testGroup
         "effectful-tracing"
-        [PropertySpec.tests, CompileTest.tests, NoOpSpec.tests]
+        [ PropertySpec.tests
+        , CompileTest.tests
+        , NoOpSpec.tests
+        , InMemorySpec.tests
+        ]
     )

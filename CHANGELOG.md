@@ -8,6 +8,21 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- In-memory interpreter (Phase 4): `runTracerInMemory`, in
+  `Effectful.Tracing.Interpreter.InMemory`, captures every completed span into
+  a shared `CapturedSpans` buffer (`newCapturedSpans` / `readCapturedSpans`) so
+  tests can assert on what a traced computation produced. This is the first
+  interpreter that opens and closes spans, so it realizes both span decisions:
+  the active span is lexical (carried in the handler's private `Reader`, so
+  nested operations see their enclosing span and emits with no active span are
+  silent no-ops), and span finalization runs in `generalBracket`, so a span is
+  closed and emitted exactly once with an `Error` status even when killed by an
+  asynchronous exception. Children inherit their parent's trace id and get a
+  fresh span id; roots mint a new trace id. Query helpers `findSpan`,
+  `childrenOf`, and `rootSpans` inspect the captured list. Tests cover naming,
+  ordered timing, nesting, sibling structure, exception recording, async-kill
+  single-close, lexical emit targeting, and a property check that captured
+  spans always form a valid forest.
 - No-op interpreter (Phase 3): `runTracerNoOp`, re-exported from
   `Effectful.Tracing`, discharges the `Tracer` effect with no observable
   effect: scoped actions run unchanged (exceptions propagate), emit operations
