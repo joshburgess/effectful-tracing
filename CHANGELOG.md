@@ -8,6 +8,23 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- Pretty-print interpreter (Phase 5): `runTracerPretty`, in
+  `Effectful.Tracing.Interpreter.PrettyPrint`, writes a human-readable,
+  tree-shaped rendering of each finished trace to a `Handle` (usually
+  `stderr`) for local development. Configurable via `PrettyPrintConfig`
+  (handle, color, whether to show attributes and events, and a `TimeFormat`:
+  duration only, offset from trace start, or absolute). Because spans complete
+  out of order, each trace is buffered in a `TVar (Map TraceId [Span])` and
+  rendered as a unit the moment its root closes. The pure `renderTrace`
+  formatter is exposed and is the unit of golden testing. Tests pin the layout
+  with golden files (nested server/client trace, colored output, a
+  relative-time variant, and a failed span) plus an end-to-end test through the
+  live interpreter.
+- The shared span lifecycle (lexical active span, finalize-exactly-once under
+  `generalBracket`) used by every span-opening interpreter now lives in
+  `Effectful.Tracing.Internal.Live`, behind a single `interpretTracer` that is
+  parameterized only by a `Span -> IO ()` sink. The in-memory interpreter was
+  refactored onto it with no behavior change.
 - In-memory interpreter (Phase 4): `runTracerInMemory`, in
   `Effectful.Tracing.Interpreter.InMemory`, captures every completed span into
   a shared `CapturedSpans` buffer (`newCapturedSpans` / `readCapturedSpans`) so

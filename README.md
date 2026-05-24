@@ -29,7 +29,7 @@ published.)
 Write a computation against the `Tracer` effect, then discharge it. The no-op
 interpreter (`runTracerNoOp`) satisfies the effect with zero tracing and no
 external dependencies, so this runs as-is. Swap in the in-memory,
-pretty-print, or OpenTelemetry interpreter (later phases) without touching the
+pretty-print, or OpenTelemetry (later phase) interpreter without touching the
 computation.
 
 ```haskell
@@ -56,6 +56,36 @@ main = do
   result <- runEff (runTracerNoOp compute)
   print result
 ```
+
+## Seeing your traces
+
+During development, swap the no-op interpreter for the pretty-print one to see
+the trace as a tree on stderr. The computation does not change, only the
+interpreter.
+
+```haskell
+import Effectful.Tracing.Interpreter.PrettyPrint
+import System.IO (stderr)
+
+main :: IO ()
+main = do
+  result <- runEff (runTracerPretty (defaultPrettyPrintConfig stderr) compute)
+  print result
+```
+
+prints:
+
+```
+trace 4f1a9c000000000000000000000000aa (1ms)
+└─ outer (1ms) status=Ok
+   user.id=u123
+   └─ inner (0ms) status=Ok
+      event: fetching @ +0.0ms
+```
+
+(The trace id and durations vary from run to run.) For tests, the in-memory
+interpreter (`Effectful.Tracing.Interpreter.InMemory`) captures completed spans
+into a buffer you can assert on.
 
 ## Tutorial
 

@@ -1,0 +1,9 @@
+trace 4f1a9c000000000000000000000000aa (78ms)
+└─ handle_request [server] (78ms) status=Ok
+   user.id=u123
+   ├─ authenticate (12ms) status=Ok
+   ├─ load_user (8ms) status=Ok
+   │  └─ db.query [client] (6ms) status=Ok
+   │     db.system=postgresql
+   │     event: query.started @ +0.1ms
+   └─ render (54ms) status=Ok

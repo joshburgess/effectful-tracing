@@ -1,0 +1,6 @@
+trace 4f1a9c000000000000000000000000aa (78ms)
+└─ handle_request [server] (+0.0ms 78ms) status=Ok
+   ├─ authenticate (+2ms 12ms) status=Ok
+   ├─ load_user (+16ms 8ms) status=Ok
+   │  └─ db.query [client] (+17ms 6ms) status=Ok
+   └─ render (+24ms 54ms) status=Ok

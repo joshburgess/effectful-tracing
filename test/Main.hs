@@ -12,6 +12,7 @@ import Test.Tasty (defaultMain, testGroup)
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
+import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 
 main :: IO ()
@@ -23,5 +24,6 @@ main =
         , CompileTest.tests
         , NoOpSpec.tests
         , InMemorySpec.tests
+        , PrettyPrintSpec.tests
         ]
     )

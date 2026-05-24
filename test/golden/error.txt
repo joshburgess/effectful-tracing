@@ -1,0 +1,4 @@
+trace 4f1a9c000000000000000000000000aa (40ms)
+└─ checkout [server] (40ms) status=Error: payment declined
+   cart.size=3
+   event: exception @ +39ms

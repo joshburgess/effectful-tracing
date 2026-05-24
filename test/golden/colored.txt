@@ -1,0 +1,9 @@
+trace 4f1a9c000000000000000000000000aa (78ms)
+└─ [1mhandle_request[0m [server] (78ms) status=[32mOk[0m
+   [90muser.id=u123[0m
+   ├─ [1mauthenticate[0m (12ms) status=[32mOk[0m
+   ├─ [1mload_user[0m (8ms) status=[32mOk[0m
+   │  └─ [1mdb.query[0m [client] (6ms) status=[32mOk[0m
+   │     [90mdb.system=postgresql[0m
+   │     [36mevent: query.started @ +0.1ms[0m
+   └─ [1mrender[0m (54ms) status=[32mOk[0m
