@@ -256,6 +256,51 @@ enqueueBackground = withSpan "request" $ do
   pure ()  -- returns immediately; the background span lives on as its own trace
 ```
 
+## Assert on traces in your tests
+
+To check that your own instrumentation emits the spans you expect, run the code
+under the in-memory interpreter and assert on the captured spans.
+`Effectful.Tracing.Testing` bundles the capture interpreter together with pure
+matchers (`findSpan`, `childrenOf`, `isChildOf`, `hasStatus`, `lookupAttribute`,
+and friends), so you do not have to reach into the internals. The matchers are
+plain `Bool` / `Maybe`, so they pair with whatever assertion library you use.
+
+```haskell
+import Effectful (runEff)
+import Effectful.Tracing (SpanStatus (Ok), addAttribute, setStatus, withSpan)
+import Effectful.Tracing.Attribute (AttributeValue (AttrInt))
+import Effectful.Tracing.Testing
+  ( findSpan
+  , hasStatus
+  , isChildOf
+  , isRoot
+  , lookupAttribute
+  , newCapturedSpans
+  , readCapturedSpans
+  , runTracerInMemory
+  )
+import Test.Tasty.HUnit (assertBool, (@?=))
+
+-- A test that the handler opens a root span with an Ok status and a child
+-- "db.query" span carrying the row count.
+checkHandlerTrace :: IO ()
+checkHandlerTrace = do
+  spans <- runEff $ do
+    captured <- newCapturedSpans
+    runTracerInMemory captured $
+      withSpan "handler" $ do
+        setStatus Ok
+        withSpan "db.query" (addAttribute "db.rows" (1 :: Int))
+    readCapturedSpans captured
+  case (findSpan "handler" spans, findSpan "db.query" spans) of
+    (Just handler, Just db) -> do
+      assertBool "handler is a root" (isRoot handler)
+      assertBool "db.query is a child of handler" (db `isChildOf` handler)
+      hasStatus Ok handler @?= True
+      lookupAttribute "db.rows" db @?= Just (AttrInt 1)
+    _ -> assertBool "both spans were captured" False
+```
+
 ## Customize the pretty-printed output
 
 `defaultPrettyPrintConfig` shows attributes and events, no color, and durations

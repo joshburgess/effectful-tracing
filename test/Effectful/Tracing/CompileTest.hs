@@ -63,8 +63,16 @@ import Effectful.Tracing
   , withSpan'
   , (.=)
   )
-import Effectful.Tracing.Attribute (Attribute (Attribute), AttributeValue (AttrBool))
+import Effectful.Tracing.Attribute (Attribute (Attribute), AttributeValue (AttrBool, AttrInt))
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
+import Effectful.Tracing.Testing
+  ( findSpan
+  , hasStatus
+  , isChildOf
+  , isRoot
+  , lookupAttribute
+  , runTracerInMemory
+  )
 import Effectful.Tracing.Concurrent (concurrentlyInstrumented, forkLinked)
 import Effectful.Tracing.Interpreter.InMemory
   ( newCapturedSpans
@@ -163,6 +171,7 @@ docExamples =
     `seq` (cbConsume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Consume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Forward :: Eff '[Tracer] [Header])
+    `seq` (cbCheckHandlerTrace :: IO ())
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
     `seq` (cbPrettyRun :: Eff '[Tracer, IOE] () -> IO ())
@@ -272,6 +281,24 @@ cbB3Consume headers =
 -- cookbook: "Interoperate with B3 (Zipkin) headers" (forward as a single b3 header)
 cbB3Forward :: Tracer :> es => Eff es [Header]
 cbB3Forward = injectContextB3
+
+-- cookbook: "Assert on traces in your tests"
+cbCheckHandlerTrace :: IO ()
+cbCheckHandlerTrace = do
+  spans <- runEff $ do
+    captured <- newCapturedSpans
+    runTracerInMemory captured $
+      withSpan "handler" $ do
+        setStatus Ok
+        withSpan "db.query" (addAttribute "db.rows" (1 :: Int))
+    readCapturedSpans captured
+  case (findSpan "handler" spans, findSpan "db.query" spans) of
+    (Just handler, Just db) -> do
+      isRoot handler @?= True
+      (db `isChildOf` handler) @?= True
+      hasStatus Ok handler @?= True
+      lookupAttribute "db.rows" db @?= Just (AttrInt 1)
+    _ -> pure ()
 
 -- cookbook: "Instrument a long-running worker"
 cbWorker :: (Tracer :> es, Queue :> es) => Eff es ()

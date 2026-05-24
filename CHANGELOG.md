@@ -224,6 +224,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
   unsampled. It is built directly against the library's own `SpanContext` like
   the W3C propagator (no SDK dependency, no new dependency, no cabal flag) and is
   tested with single- and multi-header vectors plus a fuzz totality property.
+- `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
+  own test suite. It re-exports the in-memory capture interpreter
+  (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing
+  finders (`findSpan`, `rootSpans`, `childrenOf`), and adds pure matchers over the
+  captured spans: `findSpans` (every span with a name), `descendantsOf` (the whole
+  subtree), `isRoot` / `isChildOf`, `lookupAttribute` / `hasAttribute` /
+  `hasAttributeValue`, `hasStatus`, `lookupEvent` / `hasEvent`, and `hasKind`. The
+  matchers are plain `Bool` / `Maybe` with no test-framework dependency, so they
+  compose with `tasty-hunit`, `hspec`, `hedgehog`, or anything else.
 - Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
   span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
   `asyncInstrumented`, `concurrentlyInstrumented`, and

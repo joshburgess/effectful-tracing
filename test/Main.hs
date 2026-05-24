@@ -27,6 +27,7 @@ import Effectful.Tracing.Propagation.B3Spec qualified as B3Spec
 import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
+import Effectful.Tracing.TestingSpec qualified as TestingSpec
 import Effectful.Tracing.ThunkSpec qualified as ThunkSpec
 import Effectful.Tracing.TypesSpec qualified as TypesSpec
 
@@ -59,6 +60,7 @@ main =
           , PrettyPrintSpec.tests
           , PrettyPrintLeakSpec.tests
           , SamplerSpec.tests
+          , TestingSpec.tests
           , ConcurrentSpec.tests
           , PropagationSpec.tests
           , B3Spec.tests
