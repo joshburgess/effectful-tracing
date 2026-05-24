@@ -5,9 +5,11 @@
 -- License     : BSD-3-Clause
 --
 -- Per-phase specs live under @test/Effectful/Tracing/@ and are aggregated here.
+{-# LANGUAGE CPP #-}
+
 module Main (main) where
 
-import Test.Tasty (defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
@@ -18,18 +20,32 @@ import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
 
+#ifdef OTEL
+import Effectful.Tracing.OpenTelemetrySpec qualified as OpenTelemetrySpec
+#endif
+
 main :: IO ()
 main =
   defaultMain
     ( testGroup
         "effectful-tracing"
-        [ PropertySpec.tests
-        , CompileTest.tests
-        , NoOpSpec.tests
-        , InMemorySpec.tests
-        , PrettyPrintSpec.tests
-        , SamplerSpec.tests
-        , ConcurrentSpec.tests
-        , PropagationSpec.tests
-        ]
+        ( [ PropertySpec.tests
+          , CompileTest.tests
+          , NoOpSpec.tests
+          , InMemorySpec.tests
+          , PrettyPrintSpec.tests
+          , SamplerSpec.tests
+          , ConcurrentSpec.tests
+          , PropagationSpec.tests
+          ]
+            <> otelTests
+        )
     )
+
+-- | The OpenTelemetry interpreter tests, present only when built with @+otel@.
+otelTests :: [TestTree]
+#ifdef OTEL
+otelTests = [OpenTelemetrySpec.tests]
+#else
+otelTests = []
+#endif

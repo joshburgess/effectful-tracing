@@ -29,6 +29,15 @@ source-repository head
   type:     git
   location: https://github.com/joshburgess/effectful-tracing.git
 
+flag otel
+  description:
+    Build the OpenTelemetry export interpreter
+    (@Effectful.Tracing.Interpreter.OpenTelemetry@), which bridges to
+    @hs-opentelemetry@. Off by default so the base package stays free of the
+    OpenTelemetry dependency tree.
+  default:     False
+  manual:      True
+
 common warnings
   ghc-options:
     -Wall
@@ -75,6 +84,12 @@ library
     , time           >=1.12  && <1.15
     , vector         >=0.13  && <0.14
 
+  if flag(otel)
+    exposed-modules: Effectful.Tracing.Interpreter.OpenTelemetry
+    build-depends:
+      , clock                >=0.8   && <0.9
+      , hs-opentelemetry-api ==0.3.1.0
+
 test-suite effectful-tracing-test
   import:         warnings, language
   type:           exitcode-stdio-1.0
@@ -109,6 +124,13 @@ test-suite effectful-tracing-test
     , text              >=2.1   && <2.2
     , time              >=1.12  && <1.15
     , vector            >=0.13  && <0.14
+
+  if flag(otel)
+    cpp-options:     -DOTEL
+    other-modules:   Effectful.Tracing.OpenTelemetrySpec
+    build-depends:
+      , async                >=2.2 && <2.3
+      , hs-opentelemetry-api ==0.3.1.0
 
 benchmark effectful-tracing-bench
   import:         warnings, language

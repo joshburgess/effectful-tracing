@@ -8,6 +8,25 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- OpenTelemetry export interpreter (Phase 8), behind the new `otel` cabal flag
+  (off by default, so the base package carries no OpenTelemetry dependencies):
+  `Effectful.Tracing.Interpreter.OpenTelemetry` provides `runTracerOTel`, which
+  interprets `Tracer` by running the shared span lifecycle and, as each span
+  finishes, translating it into an `hs-opentelemetry` `ImmutableSpan` and handing
+  it to the `SpanProcessor`s in its `OtelConfig`. Pair it with an exporter and a
+  processor from `hs-opentelemetry-sdk` to reach a real collector. Our trace and
+  span ids and our `Sampler` run before OpenTelemetry sees the span and are
+  copied verbatim into the exported span, so exported ids match the ids
+  `injectContext` puts on the wire. Processors are supplied directly (the SDK
+  does not expose a provider's processors) and are force-flushed when the
+  interpreter's scope ends. The translation (`toImmutableSpan`) is exposed for
+  testing. Note: this interpreter does not thread OpenTelemetry's in-process
+  `Context`, so it will not auto-nest spans across a boundary with other
+  `hs-opentelemetry`-instrumented libraries.
+- New `otel` cabal flag gating the OpenTelemetry interpreter and its
+  dependencies: `clock` (`>=0.8 && <0.9`) and `hs-opentelemetry-api`
+  (`==0.3.1.0`) for the library, and `async` plus `hs-opentelemetry-api` for the
+  test suite.
 - W3C Trace Context propagation (Phase 8): `Effectful.Tracing.Propagation`
   carries a trace across a process boundary using the standard `traceparent`
   and `tracestate` headers, with no dependency on an OpenTelemetry SDK.
