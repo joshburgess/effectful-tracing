@@ -199,7 +199,14 @@ openSpan
   -- opened inside a 'WithLinkedRoot' scope); ignored for child spans.
   -> Eff es ActiveSpan
 openSpan sampler name args parent pendingLinks = do
-  let parentContext = activeContext <$> parent
+  -- Force the projected parent context (not just the @Maybe@ to WHNF). A lazy
+  -- @activeContext <$> parent@ leaves @Just (activeContext p)@ as a thunk that
+  -- retains the parent's entire 't:ActiveSpan' (and its builder 'IORef') inside
+  -- every completed child span. 'spanContextTraceId' etc. are strict, so
+  -- forcing to WHNF keeps only the small immutable context.
+  let parentContext = case parent of
+        Nothing -> Nothing
+        Just p -> Just $! activeContext p
       spanLinks = links args <> if isNothing parentContext then pendingLinks else []
   (traceId, baseFlags, baseState) <- case parentContext of
     Just pc -> pure (spanContextTraceId pc, spanContextTraceFlags pc, spanContextTraceState pc)

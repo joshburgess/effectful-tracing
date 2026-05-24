@@ -44,6 +44,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
   (`toImmutableSpan (property)`) checking the OpenTelemetry translation is
   lossless on trace id, span id, name, kind, status, and distinct attribute
   count for any generated span.
+- Thunk-retention regression test (`Effectful.Tracing.ThunkSpec`): runs a nested
+  traced computation through the in-memory interpreter and asserts with
+  `nothunks` that each completed `Span` carries no unexpected thunk. The check is
+  deliberately precise (strict scalar structure deeply, the intentionally
+  spine-lazy attribute/event/link lists to WHNF), so it guards the lifecycle's
+  WHNF guarantee without false-positiving on the lazy list tails. The
+  `nothunks` dependency and its orphan instances are test-only, so the published
+  package takes on no new dependency. This test is what surfaced the
+  `spanParentContext` retention fixed above.
 - Documentation and example (Phase 10): a guided [tutorial](docs/tutorial.md)
   from a pretty-printed trace to OpenTelemetry export against a local Jaeger, a
   [cookbook](docs/cookbook.md) of focused recipes (trace an existing function,
@@ -235,15 +244,19 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Changed
 
-- Strictness follow-up: closed three thunk/retention spots a fresh audit
+- Strictness follow-up: closed four thunk/retention spots a fresh audit
   surfaced (the data model itself was already fully strict). `finalizeSpan`
   now forces the completed `Span` to WHNF before handing it to the sink, so a
   sink that stores it (the in-memory buffer, the pretty-print accumulator) holds
-  a finished value rather than a thunk retaining the span's builder `IORef`. The
-  pretty-print interpreter forces the rebuilt per-trace map before `writeTVar`,
-  and the WAI middleware projects and forces the response status before stashing
-  it, so the status ref no longer pins the whole response (body included) until
-  the span closes. All behavior-preserving; the full suite passes unchanged.
+  a finished value rather than a thunk retaining the span's builder `IORef`. A
+  child span's `spanParentContext` is now forced past the `Maybe`: the previous
+  lazy `activeContext <$> parent` left `Just (activeContext p)` as a thunk that
+  retained the parent's entire `ActiveSpan` (builder `IORef` included) inside
+  every completed child span. The pretty-print interpreter forces the rebuilt
+  per-trace map before `writeTVar`, and the WAI middleware projects and forces
+  the response status before stashing it, so the status ref no longer pins the
+  whole response (body included) until the span closes. All behavior-preserving;
+  the full suite passes unchanged.
 - Strict-by-default posture: enabled `StrictData` and `-funbox-strict-fields`
   across the package, so record fields are strict and unboxed unless explicitly
   marked lazy. The data model already annotated its fields strict, so this is

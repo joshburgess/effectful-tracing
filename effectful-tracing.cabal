@@ -155,6 +155,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.PropagationSpec
     Effectful.Tracing.PropertySpec
     Effectful.Tracing.SamplerSpec
+    Effectful.Tracing.ThunkSpec
     Effectful.Tracing.TypesSpec
 
   build-depends:
@@ -166,6 +167,7 @@ test-suite effectful-tracing-test
     , effectful-tracing
     , hedgehog          >=1.4   && <1.6
     , http-types        >=0.12  && <0.13
+    , nothunks          >=0.2   && <0.4
     , tasty             >=1.4   && <1.6
     , tasty-golden      >=2.3   && <2.4
     , tasty-hedgehog    >=1.4   && <1.5

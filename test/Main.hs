@@ -23,6 +23,7 @@ import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
 import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
+import Effectful.Tracing.ThunkSpec qualified as ThunkSpec
 import Effectful.Tracing.TypesSpec qualified as TypesSpec
 
 #ifdef OTEL
@@ -55,6 +56,7 @@ main =
           , ConcurrentSpec.tests
           , PropagationSpec.tests
           , FuzzSpec.tests
+          , ThunkSpec.tests
           ]
             <> otelTests
             <> waiTests
