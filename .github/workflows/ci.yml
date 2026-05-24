@@ -97,9 +97,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ghc9.10.3-haddock-
 
-      # Build docs for every module (all flags) and fail if Haddock reports a
-      # broken doc-link. This guards the doc-link cleanup against regressing.
-      - name: Build Haddock (fail on broken doc-links)
+      # Build docs for every module (all flags) and fail on (a) any broken
+      # doc-link or (b) any module whose Haddock coverage is below 100%. The
+      # first guards the doc-link cleanup; the second keeps every new export
+      # documented.
+      - name: Build Haddock (fail on broken doc-links or <100% coverage)
         run: |
           set -o pipefail
           cabal haddock all --flags="otel wai http-client secure-ids" 2>&1 | tee haddock.log
@@ -107,6 +109,40 @@ jobs:
             echo "::error::Haddock reported broken doc-links (see log above)"
             exit 1
           fi
+          # Coverage lines look like " 100% (  5 /  5) in 'Module'"; flag any
+          # that are not at 100%.
+          if grep ") in '" haddock.log | grep -qv "100% "; then
+            echo "::error::Haddock coverage is below 100% in:"
+            grep ") in '" haddock.log | grep -v "100% "
+            exit 1
+          fi
+
+  example:
+    name: build servant example (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.10.3-example-${{ hashFiles('examples/servant-app/servant-app.cabal', 'effectful-tracing.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-example-
+
+      # The example has its own cabal.project pointing at the in-tree library
+      # (with +otel +wai +http-client), so building it here proves the example
+      # still compiles against the current API.
+      - name: Build example
+        working-directory: examples/servant-app
+        run: cabal build all
 
   hlint:
     name: hlint
