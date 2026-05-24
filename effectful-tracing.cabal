@@ -38,6 +38,14 @@ flag otel
   default:     False
   manual:      True
 
+flag wai
+  description:
+    Build the WAI tracing middleware
+    (@Effectful.Tracing.Instrumentation.Wai@). Off by default so the base
+    package does not depend on @wai@.
+  default:     False
+  manual:      True
+
 common warnings
   ghc-options:
     -Wall
@@ -90,6 +98,10 @@ library
       , clock                >=0.8   && <0.9
       , hs-opentelemetry-api ==0.3.1.0
 
+  if flag(wai)
+    exposed-modules: Effectful.Tracing.Instrumentation.Wai
+    build-depends:   wai >=3.2 && <3.3
+
 test-suite effectful-tracing-test
   import:         warnings, language
   type:           exitcode-stdio-1.0
@@ -131,6 +143,11 @@ test-suite effectful-tracing-test
     build-depends:
       , async                >=2.2 && <2.3
       , hs-opentelemetry-api ==0.3.1.0
+
+  if flag(wai)
+    cpp-options:     -DWAI
+    other-modules:   Effectful.Tracing.Instrumentation.WaiSpec
+    build-depends:   wai >=3.2 && <3.3
 
 benchmark effectful-tracing-bench
   import:         warnings, language

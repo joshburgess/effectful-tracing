@@ -24,6 +24,10 @@ import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
 import Effectful.Tracing.OpenTelemetrySpec qualified as OpenTelemetrySpec
 #endif
 
+#ifdef WAI
+import Effectful.Tracing.Instrumentation.WaiSpec qualified as WaiSpec
+#endif
+
 main :: IO ()
 main =
   defaultMain
@@ -39,6 +43,7 @@ main =
           , PropagationSpec.tests
           ]
             <> otelTests
+            <> waiTests
         )
     )
 
@@ -48,4 +53,12 @@ otelTests :: [TestTree]
 otelTests = [OpenTelemetrySpec.tests]
 #else
 otelTests = []
+#endif
+
+-- | The WAI middleware tests, present only when built with @+wai@.
+waiTests :: [TestTree]
+#ifdef WAI
+waiTests = [WaiSpec.tests]
+#else
+waiTests = []
 #endif

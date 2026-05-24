@@ -8,6 +8,22 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- WAI tracing middleware (Phase 9), behind the new `wai` cabal flag (off by
+  default, so the base package does not depend on `wai`):
+  `Effectful.Tracing.Instrumentation.Wai` provides `traceMiddleware` (and
+  `traceMiddlewareWith` for custom span naming), which wraps each request in a
+  `server`-kind span. It continues an inbound distributed trace by reading
+  `traceparent` / `tracestate`, attaches `http.method`, `http.target`,
+  `http.scheme`, and `http.flavor` at span start, records `http.status_code` on
+  the response (a 5xx sets the span status to error; a 4xx does not), and lets
+  the shared span lifecycle record any handler exception before it propagates.
+  Attributes follow the OpenTelemetry HTTP semantic conventions v1.20.0. Because
+  WAI runs in `IO`, the middleware takes an unlift function obtained with
+  effectful's `withEffToIO`; a real server must use a concurrent unlift strategy.
+  Tested through the in-memory interpreter (span shape, attributes, status
+  mapping, remote-parent continuation, and exception handling).
+- New `wai` cabal flag gating the WAI middleware and its `wai` dependency
+  (`>=3.2 && <3.3`), for both the library and the test suite.
 - OpenTelemetry export interpreter (Phase 8), behind the new `otel` cabal flag
   (off by default, so the base package carries no OpenTelemetry dependencies):
   `Effectful.Tracing.Interpreter.OpenTelemetry` provides `runTracerOTel`, which
