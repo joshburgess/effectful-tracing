@@ -10,6 +10,7 @@ module Main (main) where
 import Test.Tasty (defaultMain, testGroup)
 
 import Effectful.Tracing.CompileTest qualified as CompileTest
+import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
@@ -27,5 +28,6 @@ main =
         , InMemorySpec.tests
         , PrettyPrintSpec.tests
         , SamplerSpec.tests
+        , ConcurrentSpec.tests
         ]
     )

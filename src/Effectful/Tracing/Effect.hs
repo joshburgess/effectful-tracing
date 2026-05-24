@@ -31,6 +31,7 @@ module Effectful.Tracing.Effect
     -- * Scoping a span
   , withSpan
   , withSpan'
+  , withLinkedRoot
 
     -- * Annotating the active span
   , addAttribute
@@ -62,10 +63,14 @@ import Effectful.Tracing.Internal.Types
 
 -- | Tracing as a scoped effect. 'WithSpan' is higher-order: it runs the scoped
 -- action @m a@ inside a child span whose parent is the lexically-current active
--- span. The remaining operations annotate the active span and are no-ops when
--- there is none (see "Effectful.Tracing.Effect#no-active-span").
+-- span. 'WithLinkedRoot' is also higher-order: it detaches the active span for
+-- its scope (so a nested 'WithSpan' starts a new root trace) while recording
+-- links to the spans that caused the work. The remaining operations annotate
+-- the active span and are no-ops when there is none (see
+-- "Effectful.Tracing.Effect#no-active-span").
 data Tracer :: Effect where
   WithSpan :: Text -> SpanArguments -> m a -> Tracer m a
+  WithLinkedRoot :: [Link] -> m a -> Tracer m a
   AddAttribute :: Text -> AttributeValue -> Tracer m ()
   AddAttributes :: [Attribute] -> Tracer m ()
   AddEvent :: Text -> [Attribute] -> Tracer m ()
@@ -131,6 +136,25 @@ withSpan'
   -> Eff es a
   -> Eff es a
 withSpan' name args action = send (WithSpan name args action)
+
+-- | Run an action detached from the current trace, recording the given links as
+-- "caused by" references. Inside the scope there is no active span, so the
+-- first 'withSpan' opens a new __root__ span (a new trace) rather than a child
+-- of the enclosing span; the links are attached to that root. This expresses a
+-- causal relationship for work that is triggered by, but does not belong to,
+-- the current trace, such as fire-and-forget background tasks.
+--
+-- "Effectful.Tracing.Concurrent" builds @forkLinked@ on this: it captures the
+-- current span context as a link and forks the body inside a linked root scope.
+--
+-- > withLinkedRoot [Link callerContext []] $
+-- >   withSpan "background.reindex" $ ...
+withLinkedRoot
+  :: (HasCallStack, Tracer :> es)
+  => [Link]
+  -> Eff es a
+  -> Eff es a
+withLinkedRoot links action = send (WithLinkedRoot links action)
 
 -- | Attach a single attribute to the active span. No-op if there is no active
 -- span.

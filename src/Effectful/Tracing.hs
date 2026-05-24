@@ -15,6 +15,7 @@ module Effectful.Tracing
     Tracer
   , withSpan
   , withSpan'
+  , withLinkedRoot
   , addAttribute
   , addAttributes
   , addEvent
@@ -96,6 +97,7 @@ import Effectful.Tracing.Effect
   , recordException
   , setStatus
   , transitionStatus
+  , withLinkedRoot
   , withSpan
   , withSpan'
   )

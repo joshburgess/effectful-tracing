@@ -8,6 +8,25 @@ project aims to be PVP-compliant.
 
 ### Added
 
+- Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
+  span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
+  `asyncInstrumented`, `concurrentlyInstrumented`, and
+  `forConcurrentlyInstrumented` spawn work that inherits the launching span as
+  its parent, so a `withSpan` in a forked thread nests under the span that
+  started it. Because the active span is a handler-local value (not a shared
+  stack), effectful's environment cloning at the fork carries it to the child
+  automatically, so these are thin wrappers over `forkIO` / `async` /
+  `concurrently` / `forConcurrently`. `forkLinked` instead runs fire-and-forget
+  work detached, starting a new root trace with a `Link` back to the caller
+  ("caused by" rather than "child of"). This is backed by a new
+  `withLinkedRoot` primitive (and `WithLinkedRoot` effect operation) that
+  detaches the active span and stages links for the next root span. Tested
+  through the in-memory interpreter (parent/sibling nesting, completion-order
+  independence, exception recording and propagation, the linked-root shape, and
+  a 1000-way concurrent fan-out) under a threaded runtime.
+- New library dependency on the full `effectful` package (for
+  `Effectful.Concurrent` and `Effectful.Concurrent.Async`), pinned to
+  `==2.6.1.0` alongside `effectful-core`.
 - Sampling (Phase 6): `Effectful.Tracing.Sampler` with a `Sampler`, the
   `SamplingDecision` (`Drop` / `RecordOnly` / `RecordAndSample`),
   `SamplingResult`, and `SamplerInput` data model, plus the four built-in

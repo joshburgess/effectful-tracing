@@ -33,7 +33,7 @@ import Control.Exception (SomeException, displayException)
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -53,6 +53,7 @@ import Effectful.Tracing.Effect
       , GetActiveSpan
       , RecordException
       , SetStatus
+      , WithLinkedRoot
       , WithSpan
       )
   , transitionStatus
@@ -127,12 +128,15 @@ interpretTracer
   -> Eff (Tracer : es) a
   -> Eff es a
 interpretTracer sampler onComplete =
-  reinterpret (runReader (Nothing :: Maybe ActiveSpan)) $ \env -> \case
+  reinterpret (runReader (Nothing :: Maybe ActiveSpan) . runReader ([] :: [Link])) $ \env -> \case
     WithSpan name args action -> do
       parent <- ask
-      active <- openSpan sampler name args parent
+      pending <- ask
+      active <- openSpan sampler name args parent pending
       Dynamic.localSeqUnlift env $ \unlift -> do
-        let use _ = local (const (Just active)) (unlift action)
+        -- Inside the span the active span is this one and the pending links have
+        -- been consumed (a child must not re-link to the cause of its root).
+        let use _ = local (const (Just active)) (local (const ([] :: [Link])) (unlift action))
         (result, ()) <-
           generalBracket
             (pure ())
@@ -141,6 +145,11 @@ interpretTracer sampler onComplete =
                 when (activeDecision active /= Drop) (liftIO (onComplete completed)))
             use
         pure result
+    WithLinkedRoot newLinks action ->
+      -- Detach the active span so a nested WithSpan starts a new root, and stage
+      -- the links so that root picks them up.
+      Dynamic.localSeqUnlift env $ \unlift ->
+        local (const (Nothing :: Maybe ActiveSpan)) (local (const newLinks) (unlift action))
     AddAttribute key value ->
       withActive $ \active ->
         liftIO (modifyIORef' (activeBuilder active) (pushAttributes [Attribute key value]))
@@ -177,9 +186,13 @@ openSpan
   -> Text
   -> SpanArguments
   -> Maybe ActiveSpan
+  -> [Link]
+  -- ^ Pending "caused by" links, attached only when this span is a root (a span
+  -- opened inside a 'WithLinkedRoot' scope); ignored for child spans.
   -> Eff es ActiveSpan
-openSpan sampler name args parent = do
+openSpan sampler name args parent pendingLinks = do
   let parentContext = activeContext <$> parent
+      spanLinks = links args <> if isNothing parentContext then pendingLinks else []
   (traceId, baseFlags, baseState) <- case parentContext of
     Just pc -> pure (spanContextTraceId pc, spanContextTraceFlags pc, spanContextTraceState pc)
     Nothing -> do
@@ -190,7 +203,7 @@ openSpan sampler name args parent = do
   -- imported here.
   result <-
     liftIO . shouldSample sampler $
-      SamplerInput parentContext traceId name (kind args) (attributes args) (links args)
+      SamplerInput parentContext traceId name (kind args) (attributes args) spanLinks
   spanId <- newSpanId
   let sampled = decision result == RecordAndSample
       context =
@@ -216,7 +229,7 @@ openSpan sampler name args parent = do
       , activeName = name
       , activeKind = kind args
       , activeStart = start
-      , activeLinks = links args
+      , activeLinks = spanLinks
       , activeBuilder = builder
       , activeDecision = decision result
       }
