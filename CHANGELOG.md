@@ -221,6 +221,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Changed
 
+- Strictness follow-up: closed three thunk/retention spots a fresh audit
+  surfaced (the data model itself was already fully strict). `finalizeSpan`
+  now forces the completed `Span` to WHNF before handing it to the sink, so a
+  sink that stores it (the in-memory buffer, the pretty-print accumulator) holds
+  a finished value rather than a thunk retaining the span's builder `IORef`. The
+  pretty-print interpreter forces the rebuilt per-trace map before `writeTVar`,
+  and the WAI middleware projects and forces the response status before stashing
+  it, so the status ref no longer pins the whole response (body included) until
+  the span closes. All behavior-preserving; the full suite passes unchanged.
 - Strict-by-default posture: enabled `StrictData` and `-funbox-strict-fields`
   across the package, so record fields are strict and unboxed unless explicitly
   marked lazy. The data model already annotated its fields strict, so this is

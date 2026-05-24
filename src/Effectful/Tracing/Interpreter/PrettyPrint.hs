@@ -155,9 +155,11 @@ flushOnRoot config traces completed = do
   finished <- atomically $ do
     pending <- readTVar traces
     let gathered = completed : Map.findWithDefault [] traceId pending
+    -- Force the rebuilt map before writing it back so the 'TVar' holds an
+    -- evaluated map rather than a thunk capturing the previous one.
     if isNothing (spanParentContext completed)
-      then Just gathered <$ writeTVar traces (Map.delete traceId pending)
-      else Nothing <$ writeTVar traces (Map.insert traceId gathered pending)
+      then Just gathered <$ (writeTVar traces $! Map.delete traceId pending)
+      else Nothing <$ (writeTVar traces $! Map.insert traceId gathered pending)
   case finished of
     Just spans -> T.hPutStr (handle config) (renderTrace config spans)
     Nothing -> pure ()

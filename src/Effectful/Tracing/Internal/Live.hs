@@ -282,7 +282,12 @@ finalizeSpan active exitCase = do
         applyStatus (Error "span aborted")
     _ -> pure ()
   builder <- liftIO (readIORef (activeBuilder active))
-  pure
+  -- Force the immutable span to WHNF before it leaves the closing thread. With
+  -- 'StrictData' that realizes every field (the attribute and event lists are
+  -- reversed and so fully traversed), so a sink that stores the span (the
+  -- in-memory buffer, the pretty-print accumulator) holds a finished value
+  -- rather than a thunk retaining this span's builder 'IORef' and 'ActiveSpan'.
+  pure $!
     Span
       { spanContext = activeContext active
       , spanParentContext = activeParent active

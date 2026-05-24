@@ -118,7 +118,11 @@ traceMiddlewareWith nameFor runInIO app req respond =
       -- it can be recorded on the span before the scope closes.
       statusRef <- liftIO (newIORef Nothing)
       let respond' response = do
-            writeIORef statusRef (Just (responseStatus response))
+            -- Project and force the status before storing it, so the ref does
+            -- not retain the whole response (body included) until the span
+            -- closes.
+            let !status = responseStatus response
+            writeIORef statusRef (Just status)
             respond response
       received <- liftIO (app req respond')
       mStatus <- liftIO (readIORef statusRef)
