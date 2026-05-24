@@ -39,13 +39,15 @@ module Effectful.Tracing.Internal.Ids
   ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Bits (shiftR, (.&.))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.ByteString.Builder (byteStringHex, toLazyByteString)
+import Data.ByteString.Lazy qualified as BSL
 import Data.Char (isDigit, ord)
 import Data.Hashable (Hashable)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding (decodeLatin1)
 import Data.Word (Word8)
 import System.Random.Stateful (globalStdGen, uniformByteStringM)
 
@@ -134,18 +136,13 @@ traceIdFromHex t = hexToBytes t >>= traceIdFromBytes
 spanIdFromHex :: Text -> Maybe SpanId
 spanIdFromHex t = hexToBytes t >>= spanIdFromBytes
 
--- | Lowercase hex digits, indexed by nibble value.
-hexAlphabet :: String
-hexAlphabet = "0123456789abcdef"
-
+-- | Render bytes as lowercase hex. @byteStringHex@ is the @bytestring@
+-- library's builder-based encoder: it produces lowercase output (matching the
+-- W3C wire form) and walks the input once, rather than building an
+-- intermediate @String@ per byte. The result is ASCII, so decoding the bytes
+-- back to 'Text' with 'decodeLatin1' is total and cannot fail.
 bytesToHex :: ByteString -> Text
-bytesToHex = T.pack . concatMap byteToHex . BS.unpack
-  where
-    byteToHex :: Word8 -> String
-    byteToHex b = [nibble (b `shiftR` 4), nibble (b .&. 0x0f)]
-
-    nibble :: Word8 -> Char
-    nibble n = hexAlphabet !! fromIntegral n
+bytesToHex = decodeLatin1 . BSL.toStrict . toLazyByteString . byteStringHex
 
 -- | Parse an even-length hex string into bytes. Total: returns 'Nothing' on an
 -- odd length or any non-hex character.

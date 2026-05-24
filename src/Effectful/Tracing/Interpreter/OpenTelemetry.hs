@@ -261,4 +261,4 @@ toOtelAttributeValue = \case
 -- | Pour a list into an append-only bounded collection. Our spans are already
 -- bounded by the caller, so the cap is generous.
 toCollection :: [a] -> OtelUtil.AppendOnlyBoundedCollection a
-toCollection = foldl OtelUtil.appendToBoundedCollection (OtelUtil.emptyAppendOnlyBoundedCollection 1024)
+toCollection = foldl' OtelUtil.appendToBoundedCollection (OtelUtil.emptyAppendOnlyBoundedCollection 1024)

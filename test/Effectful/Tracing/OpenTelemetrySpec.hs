@@ -27,7 +27,7 @@ import Control.Concurrent.Async (async)
 import Control.Concurrent.MVar (MVar, modifyMVar_, newMVar, readMVar)
 import Data.ByteString (ByteString)
 import Data.IORef (readIORef)
-import Data.List (find, sort)
+import Data.List (find, nub, sort)
 import Data.Maybe (isNothing)
 import Data.Text qualified as T
 
@@ -40,8 +40,10 @@ import OpenTelemetry.Trace.Core qualified as OTel
 import OpenTelemetry.Trace.Id qualified as OtelId
 
 import Effectful (Eff, IOE, runEff, (:>))
+import Hedgehog (Property, evalEither, evalIO, forAll, property, (===))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (assertBool, assertFailure, testCase, (@?=))
+import Test.Tasty.Hedgehog (testProperty)
 
 import Effectful.Tracing
   ( SpanArguments (kind)
@@ -51,11 +53,14 @@ import Effectful.Tracing
   , withSpan
   , withSpan'
   )
+import Effectful.Tracing.Attribute (Attribute (attributeKey))
+import Effectful.Tracing.Gen (genSpan)
 import Effectful.Tracing.Internal.Ids (SpanId (SpanId), TraceId (TraceId))
 import Effectful.Tracing.Internal.Types
   ( Span (..)
   , SpanContext (..)
   , SpanKind (Server)
+  , SpanStatus (Error, Ok, Unset)
   )
 import Effectful.Tracing.Interpreter.InMemory
   ( newCapturedSpans
@@ -74,6 +79,7 @@ tests =
   testGroup
     "OpenTelemetry"
     [ testGroup "toImmutableSpan" translationTests
+    , testGroup "toImmutableSpan (property)" translationProperties
     , testGroup "runTracerOTel (end to end)" endToEndTests
     ]
 
@@ -110,6 +116,39 @@ translationTests =
           OTel.Server -> pure ()
           other -> assertFailure ("expected Server kind, got " <> show other)
   ]
+
+translationProperties :: [TestTree]
+translationProperties =
+  [ testProperty "preserves ids, name, kind, status, and attribute count" prop_translationPreserves
+  ]
+
+-- | For any generated span, the crossing into @hs-opentelemetry@ must be
+-- lossless on the fields that identify and classify the span: our trace and
+-- span id bytes, the name, the kind, the status, and the number of distinct
+-- attribute keys. (The OTel attribute set is a keyed map, so the count it
+-- reports is the number of distinct keys, which is what we compare against.)
+prop_translationPreserves :: Property
+prop_translationPreserves = property $ do
+  completed <- forAll genSpan
+  tracer <- evalIO makeTestTracer
+  immutable <- evalEither (toImmutableSpan tracer completed)
+  let TraceId ourTrace = spanContextTraceId (spanContext completed)
+      SpanId ourSpan = spanContextSpanId (spanContext completed)
+  OtelId.traceIdBytes (OTel.traceId (OTel.spanContext immutable)) === ourTrace
+  OtelId.spanIdBytes (OTel.spanId (OTel.spanContext immutable)) === ourSpan
+  OTel.spanName immutable === spanName completed
+  -- Our 'SpanKind' and OpenTelemetry's share constructor names, so comparing
+  -- their 'Show' output sidesteps the missing 'Eq' on OTel's 'SpanKind'.
+  show (OTel.spanKind immutable) === show (spanKind completed)
+  OTel.spanStatus immutable === expectedStatus (spanStatus completed)
+  OtelAttr.getCount (OTel.spanAttributes immutable)
+    === length (nub (map attributeKey (spanAttributes completed)))
+
+-- | The expected OpenTelemetry status for one of ours.
+expectedStatus :: SpanStatus -> OTel.SpanStatus
+expectedStatus Unset = OTel.Unset
+expectedStatus Ok = OTel.Ok
+expectedStatus (Error message) = OTel.Error message
 
 endToEndTests :: [TestTree]
 endToEndTests =

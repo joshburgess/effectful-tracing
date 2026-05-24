@@ -13,6 +13,7 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
+import Effectful.Tracing.FuzzSpec qualified as FuzzSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
@@ -45,6 +46,7 @@ main =
           , SamplerSpec.tests
           , ConcurrentSpec.tests
           , PropagationSpec.tests
+          , FuzzSpec.tests
           ]
             <> otelTests
             <> waiTests

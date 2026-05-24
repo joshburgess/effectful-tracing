@@ -67,9 +67,11 @@ common warnings
     -Wmissing-export-lists
     -Wpartial-fields
     -Wredundant-constraints
+    -funbox-strict-fields
 
 common language
-  default-language: GHC2021
+  default-language:   GHC2021
+  default-extensions: StrictData
 
 library
   import:          warnings, language
@@ -126,6 +128,7 @@ test-suite effectful-tracing-test
   other-modules:
     Effectful.Tracing.CompileTest
     Effectful.Tracing.ConcurrentSpec
+    Effectful.Tracing.FuzzSpec
     Effectful.Tracing.Gen
     Effectful.Tracing.InMemorySpec
     Effectful.Tracing.NoOpSpec

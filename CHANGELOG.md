@@ -12,6 +12,14 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- Robustness and translation property tests: a fuzz suite
+  (`Effectful.Tracing.FuzzSpec`) that feeds uniformly random and
+  traceparent-shaped input to `extractContext`, `traceIdFromHex`,
+  `spanIdFromHex`, and `traceStateFromHeader` and asserts each is total (always
+  terminates, never throws) and well-formed; and a property
+  (`toImmutableSpan (property)`) checking the OpenTelemetry translation is
+  lossless on trace id, span id, name, kind, status, and distinct attribute
+  count for any generated span.
 - Documentation and example (Phase 10): a guided [tutorial](docs/tutorial.md)
   from a pretty-printed trace to OpenTelemetry export against a local Jaeger, a
   [cookbook](docs/cookbook.md) of focused recipes (trace an existing function,
@@ -200,3 +208,14 @@ context propagation, and the WAI / http-client instrumentation helpers.
   test suite, a tasty-bench benchmark harness, hlint configuration, and a
   GitHub Actions CI workflow. No automated formatter is used. No library
   functionality yet.
+
+### Changed
+
+- Strict-by-default posture: enabled `StrictData` and `-funbox-strict-fields`
+  across the package, so record fields are strict and unboxed unless explicitly
+  marked lazy. The data model already annotated its fields strict, so this is
+  belt-and-suspenders rather than a behavior change, and it keeps later
+  additions strict by default. The `TraceId` / `SpanId` hex encoder now uses
+  `bytestring`'s builder-based `byteStringHex` instead of building an
+  intermediate `String` per byte, and the OpenTelemetry event collection is
+  assembled with a strict `foldl'`.

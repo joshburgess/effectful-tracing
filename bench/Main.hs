@@ -20,7 +20,6 @@
 module Main (main) where
 
 import Control.Monad (foldM)
-import Data.List (foldl')
 
 import Effectful (Eff, runEff, (:>))
 import Effectful.Tracing (Tracer, runTracerNoOp, withSpan)
