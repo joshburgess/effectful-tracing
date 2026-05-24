@@ -81,7 +81,7 @@ annotated = withSpan "handle.order" $ do
   -- A single typed attribute.
   addAttribute "order.id" ("o-9921" :: Text)
   -- Several at once, using (.=) to build them.
-  addAttributes ["http.method" .= ("POST" :: Text), "http.status_code" .= (200 :: Int)]
+  addAttributes ["http.request.method" .= ("POST" :: Text), "http.response.status_code" .= (200 :: Int)]
   -- A point-in-time event on the span's timeline.
   addEvent "inventory.reserved" ["sku" .= ("widget-1" :: Text)]
   -- Record an error (does not itself end the span).

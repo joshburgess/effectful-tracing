@@ -98,6 +98,7 @@ library
     Effectful.Tracing.Interpreter.PrettyPrint
     Effectful.Tracing.Propagation
     Effectful.Tracing.Sampler
+    Effectful.Tracing.SemConv
     Effectful.Tracing.Internal.Clock
     Effectful.Tracing.Internal.Ids
     Effectful.Tracing.Internal.Live

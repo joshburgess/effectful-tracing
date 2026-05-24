@@ -10,7 +10,7 @@
 -- actual request/response. The server records the headers it received, which
 -- lets us assert that the wrapper injected a @traceparent@ carrying the client
 -- span's trace id (propagation end to end), and the captured spans let us assert
--- the @client@ kind, the @http.*@ attributes, and the status mapping.
+-- the @client@ kind, the stable HTTP \/ URL attributes, and the status mapping.
 module Effectful.Tracing.Instrumentation.HttpClientSpec
   ( tests
   ) where
@@ -63,11 +63,11 @@ tests =
         withEchoServer status200 $ \captured port -> do
           (spans, _) <- runClient port "/widgets"
           s <- clientSpan spans
-          lookupText "http.method" s @?= Just "GET"
+          lookupText "http.request.method" s @?= Just "GET"
           assertBool
-            "http.url contains the request path"
-            (maybe False (("/widgets" `isInfixOf`) . T.unpack) (lookupText "http.url" s))
-          lookupInt "http.status_code" s @?= Just 200
+            "url.full contains the request path"
+            (maybe False (("/widgets" `isInfixOf`) . T.unpack) (lookupText "url.full" s))
+          lookupInt "http.response.status_code" s @?= Just 200
           spanStatus s @?= Unset
           -- The server received our traceparent, carrying the client span's trace.
           headers <- readMVar captured
@@ -78,7 +78,7 @@ tests =
         withEchoServer status500 $ \_ port -> do
           (spans, _) <- runClient port "/boom"
           s <- clientSpan spans
-          lookupInt "http.status_code" s @?= Just 500
+          lookupInt "http.response.status_code" s @?= Just 500
           case spanStatus s of
             Error _ -> pure ()
             other -> assertFailure ("expected Error status, got " <> show other)

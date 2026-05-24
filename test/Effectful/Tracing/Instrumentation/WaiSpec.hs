@@ -8,10 +8,10 @@
 -- The middleware is exercised against a hand-built 'Request' and a trivial
 -- 'Application', run through the in-memory interpreter so the resulting spans
 -- can be inspected directly. We assert the shape a server span should have: a
--- @server@ kind, a name and @http.*@ attributes from the request, the response
--- status code, a 5xx mapped to an error status, an inbound @traceparent@
--- continued as the parent trace, and an exception in the handler recorded and
--- re-raised.
+-- @server@ kind, a name and the stable HTTP \/ URL attributes from the request,
+-- the response status code, a 5xx mapped to an error status, an inbound
+-- @traceparent@ continued as the parent trace, and an exception in the handler
+-- recorded and re-raised.
 module Effectful.Tracing.Instrumentation.WaiSpec
   ( tests
   ) where
@@ -19,6 +19,7 @@ module Effectful.Tracing.Instrumentation.WaiSpec
 import Control.Exception (SomeException, throwIO)
 import Control.Monad (void)
 import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.List (find)
 import Data.Maybe (isNothing)
@@ -27,7 +28,7 @@ import Data.Text (Text)
 import Network.HTTP.Types (Status, status200, status404, status503)
 import Network.Wai
   ( Application
-  , Request (rawPathInfo, requestHeaders, requestMethod)
+  , Request (rawPathInfo, rawQueryString, requestHeaders, requestMethod)
   , defaultRequest
   , responseLBS
   )
@@ -65,24 +66,29 @@ tests =
         s <- single spans
         spanName s @?= "GET"
         spanKind s @?= Server
-        lookupText "http.method" s @?= Just "GET"
-        lookupText "http.target" s @?= Just "/users"
-        lookupText "http.scheme" s @?= Just "http"
-        lookupInt "http.status_code" s @?= Just 200
+        lookupText "http.request.method" s @?= Just "GET"
+        lookupText "url.path" s @?= Just "/users"
+        lookupText "url.scheme" s @?= Just "http"
+        lookupInt "http.response.status_code" s @?= Just 200
         spanStatus s @?= Unset
-    , testCase "records the query string in http.target" $ do
+    , testCase "with no query string url.query is omitted" $ do
+        (spans, _) <- runWai (get "/users") (ok "hi")
+        s <- single spans
+        lookupText "url.query" s @?= Nothing
+    , testCase "records path and query in url.path and url.query" $ do
         (spans, _) <- runWai (get "/search?q=cat") (ok "hi")
         s <- single spans
-        lookupText "http.target" s @?= Just "/search?q=cat"
+        lookupText "url.path" s @?= Just "/search"
+        lookupText "url.query" s @?= Just "q=cat"
     , testCase "a 4xx leaves the span status unset" $ do
         (spans, _) <- runWai (get "/missing") (respondWith status404 "nope")
         s <- single spans
-        lookupInt "http.status_code" s @?= Just 404
+        lookupInt "http.response.status_code" s @?= Just 404
         spanStatus s @?= Unset
     , testCase "a 5xx marks the span as an error" $ do
         (spans, _) <- runWai (get "/boom") (respondWith status503 "down")
         s <- single spans
-        lookupInt "http.status_code" s @?= Just 503
+        lookupInt "http.response.status_code" s @?= Just 503
         assertError (spanStatus s)
     , testCase "with no inbound traceparent the span is a root" $ do
         (spans, _) <- runWai (get "/") (ok "hi")
@@ -136,8 +142,19 @@ discardResponse _ = pure ResponseReceived
 
 -- Request builders ----------------------------------------------------------
 
+-- | Build a GET request, splitting any query string off the path the way WAI
+-- does: @rawPathInfo@ holds the path and @rawQueryString@ holds the query
+-- (including its leading @?@).
 get :: ByteString -> Request
-get path = defaultRequest {requestMethod = "GET", rawPathInfo = path}
+get raw =
+  defaultRequest
+    { requestMethod = "GET"
+    , rawPathInfo = path
+    , rawQueryString = query
+    }
+  where
+    (path, query) = BS.break (== qMark) raw
+    qMark = 63 -- '?'
 
 withTraceparent :: ByteString -> Request -> Request
 withTraceparent value req =

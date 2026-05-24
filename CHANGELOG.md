@@ -12,6 +12,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
 
 ### Added
 
+- `Effectful.Tracing.SemConv`, a small module of typed constants for the
+  OpenTelemetry semantic-convention attribute keys the library emits
+  (`http.request.method`, `url.full`, `http.response.status_code`, and so on).
+  The WAI and http-client instrumentation and the exception event now name their
+  attributes from this one place, and the keys track the stable HTTP / URL
+  conventions rather than the pre-stable `http.method` / `http.url` /
+  `http.status_code` names. The WAI middleware now splits the request target into
+  `url.path` and `url.query` (the latter only when a query string is present),
+  and reports the protocol as `network.protocol.version`.
 - Support for GHC 9.6 and 9.8 alongside 9.10. The `base` lower bound is relaxed
   to `>=4.18` (with `bytestring`/`text` lower bounds widened to match), and
   `foldl'` is imported from `Data.List` on bases before 4.20, where it is not yet
@@ -119,13 +128,13 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `Effectful.Tracing.Instrumentation.HttpClient` provides `httpLbsTraced`, which
   runs an `http-client` request inside a `client`-kind span. It injects the
   active context as `traceparent` / `tracestate` into the outbound request (so
-  the downstream hop continues this trace), records `http.method` and `http.url`
-  at span start and `http.status_code` on the response (a status `>= 400` sets
-  the span status to error), and relies on the shared span lifecycle to record
-  any thrown exception. The API stays in `Eff es` (no unlift needed); the
-  `Manager`-hook approach is intentionally omitted because the hooks run in `IO`
-  with no effect context. Attributes follow the OpenTelemetry HTTP semantic
-  conventions v1.20.0. Tested against a loopback Warp server that confirms
+  the downstream hop continues this trace), records `http.request.method` and
+  `url.full` at span start and `http.response.status_code` on the response (a
+  status `>= 400` sets the span status to error), and relies on the shared span
+  lifecycle to record any thrown exception. The API stays in `Eff es` (no unlift
+  needed); the `Manager`-hook approach is intentionally omitted because the hooks
+  run in `IO` with no effect context. Attributes follow the stable OpenTelemetry
+  HTTP semantic conventions. Tested against a loopback Warp server that confirms
   end-to-end propagation (the server receives a `traceparent` carrying the client
   span's trace id) along with the attributes and status mapping.
 - New `http-client` cabal flag gating the wrapper and its `http-client`
@@ -136,11 +145,12 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `Effectful.Tracing.Instrumentation.Wai` provides `traceMiddleware` (and
   `traceMiddlewareWith` for custom span naming), which wraps each request in a
   `server`-kind span. It continues an inbound distributed trace by reading
-  `traceparent` / `tracestate`, attaches `http.method`, `http.target`,
-  `http.scheme`, and `http.flavor` at span start, records `http.status_code` on
-  the response (a 5xx sets the span status to error; a 4xx does not), and lets
-  the shared span lifecycle record any handler exception before it propagates.
-  Attributes follow the OpenTelemetry HTTP semantic conventions v1.20.0. Because
+  `traceparent` / `tracestate`, attaches `http.request.method`, `url.path`,
+  `url.scheme`, and `network.protocol.version` at span start (plus `url.query`
+  when the request carries one), records `http.response.status_code` on the
+  response (a 5xx sets the span status to error; a 4xx does not), and lets the
+  shared span lifecycle record any handler exception before it propagates.
+  Attributes follow the stable OpenTelemetry HTTP semantic conventions. Because
   WAI runs in `IO`, the middleware takes an unlift function obtained with
   effectful's `withEffToIO`; a real server must use a concurrent unlift strategy.
   Tested through the in-memory interpreter (span shape, attributes, status

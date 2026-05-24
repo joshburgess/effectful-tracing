@@ -43,12 +43,12 @@ and find the trace. You should see one trace shaped like:
 
 ```
 checkout.handler        (server)
-└─ GET                  (client)   http.method=GET  http.url=.../inventory
+└─ GET                  (client)   http.request.method=GET  url.full=.../inventory
    └─ inventory.handler (server)
 ```
 
 `checkout.handler` carries the `checkout.cart` attribute; the `client` span
-carries `http.method` / `http.url` / `http.status_code`; and `inventory.handler`
+carries `http.request.method` / `url.full` / `http.response.status_code`; and `inventory.handler`
 carries the `inventory.read` event. All three share one trace id because the
 `traceparent` injected by `httpLbsTraced` is continued by `traceMiddleware`.
 

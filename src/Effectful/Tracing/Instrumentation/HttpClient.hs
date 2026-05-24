@@ -10,8 +10,9 @@
 --
 -- Wrap an @http-client@ request so it runs inside a @client@-kind span that
 -- injects @traceparent@ \/ @tracestate@ into the outbound request (so the next
--- hop continues the trace), records @http.*@ attributes and the response status,
--- and is finalized even if the request throws.
+-- hop continues the trace), records the request and response following the
+-- stable OpenTelemetry HTTP semantic conventions (see
+-- "Effectful.Tracing.SemConv"), and is finalized even if the request throws.
 --
 -- > fetch :: (IOE :> es, Tracer :> es) => Manager -> Eff es (Response ByteString)
 -- > fetch manager = do
@@ -65,13 +66,14 @@ import Effectful.Tracing
   , (.=)
   )
 import Effectful.Tracing.Attribute (Attribute)
+import Effectful.Tracing.SemConv qualified as SemConv
 
 -- | Perform an @http-client@ request (via 'httpLbs') inside a @client@-kind
 -- span. The span is named after the HTTP method (low cardinality), the active
 -- context is injected into the outbound request as @traceparent@ \/ @tracestate@
 -- so the downstream service continues this trace, and the request and response
--- are recorded as @http.*@ attributes following the OpenTelemetry HTTP semantic
--- conventions (v1.20.0). A response status @>= 400@ sets the span status to
+-- are recorded following the stable OpenTelemetry HTTP semantic conventions (see
+-- "Effectful.Tracing.SemConv"). A response status @>= 400@ sets the span status to
 -- 'Error' (from the client's view the call failed); a thrown exception is
 -- recorded by the shared span lifecycle and re-raised.
 httpLbsTraced
@@ -85,7 +87,7 @@ httpLbsTraced req manager =
     headers <- injectContext
     response <- liftIO (httpLbs (injectHeaders headers req) manager)
     let status = statusCode (responseStatus response)
-    addAttribute "http.status_code" status
+    addAttribute SemConv.httpResponseStatusCode status
     when (status >= 400) $
       setStatus (Error ("HTTP " <> T.pack (show status)))
     pure response
@@ -96,14 +98,15 @@ httpLbsTraced req manager =
         , attributes = requestAttributes req
         }
 
--- | The @http.*@ request attributes recorded at span start.
+-- | The request attributes recorded at span start, following the stable HTTP
+-- and URL semantic conventions (see "Effectful.Tracing.SemConv").
 requestAttributes :: Request -> [Attribute]
 requestAttributes req =
-  [ "http.method" .= decodeUtf8Lenient (method req)
-  , "http.url" .= urlText req
+  [ SemConv.httpRequestMethod .= decodeUtf8Lenient (method req)
+  , SemConv.urlFull .= urlText req
   ]
 
--- | The full request URL, as the @http.url@ attribute.
+-- | The full request URL, as the @url.full@ attribute.
 urlText :: Request -> Text
 urlText = T.pack . show . getUri
 

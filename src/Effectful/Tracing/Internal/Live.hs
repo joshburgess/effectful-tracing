@@ -78,6 +78,7 @@ import Effectful.Tracing.Sampler
   , SamplingDecision (Drop, RecordAndSample)
   , SamplingResult (decision, extraAttributes, newTraceState)
   )
+import Effectful.Tracing.SemConv qualified as SemConv
 
 -- | The mutable, accumulating part of an in-flight span. Attributes and events
 -- are stored newest-first and reversed when the span completes, so each emit is
@@ -325,4 +326,4 @@ applyStatus status builder =
 -- | An OpenTelemetry-style @exception@ event carrying the message.
 exceptionEvent :: Timestamp -> SomeException -> Event
 exceptionEvent time err =
-  Event "exception" time [Attribute "exception.message" (AttrText (T.pack (displayException err)))]
+  Event "exception" time [Attribute SemConv.exceptionMessage (AttrText (T.pack (displayException err)))]

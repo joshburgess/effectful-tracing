@@ -11,11 +11,11 @@
 --
 -- A WAI 'Middleware' that opens a @server@-kind span around each request. It
 -- continues an inbound distributed trace (reading @traceparent@ \/ @tracestate@
--- with "Effectful.Tracing.Propagation"), records the request and response as
--- @http.*@ attributes following the OpenTelemetry HTTP semantic conventions
--- (v1.20.0, the @http.method@ \/ @http.target@ \/ @http.status_code@ set that
--- existing collectors and Jaeger understand), and lets the shared span lifecycle
--- record any exception as a span error before it propagates.
+-- with "Effectful.Tracing.Propagation"), records the request and response
+-- following the stable OpenTelemetry HTTP semantic conventions (the
+-- @http.request.method@ \/ @url.path@ \/ @http.response.status_code@ set; see
+-- "Effectful.Tracing.SemConv"), and lets the shared span lifecycle record any
+-- exception as a span error before it propagates.
 --
 -- Because span management lives in @'Eff' es@ but WAI runs in 'IO', the
 -- middleware takes an unlift function @forall a. 'Eff' es a -> 'IO' a@. Obtain
@@ -43,6 +43,7 @@ module Effectful.Tracing.Instrumentation.Wai
 import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef (newIORef, readIORef, writeIORef)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8Lenient)
@@ -76,6 +77,7 @@ import Effectful.Tracing
   , withSpan'
   , (.=)
   )
+import Effectful.Tracing.SemConv qualified as SemConv
 
 -- | Wrap an 'Network.Wai.Application' so every request runs inside a
 -- @server@-kind span, naming the span with 'defaultSpanName' (the request
@@ -129,7 +131,7 @@ traceMiddlewareWith nameFor runInIO app req respond =
       case mStatus of
         Nothing -> pure ()
         Just status -> do
-          addAttribute "http.status_code" (statusCode status)
+          addAttribute SemConv.httpResponseStatusCode (statusCode status)
           -- 5xx marks the server span as failed (4xx is a client error, not the
           -- server's, so it leaves the status unset per the conventions).
           when (statusCode status >= 500) $
@@ -142,16 +144,25 @@ traceMiddlewareWith nameFor runInIO app req respond =
 defaultSpanName :: Request -> Text
 defaultSpanName = decodeUtf8Lenient . requestMethod
 
--- | The @http.*@ request attributes recorded at span start.
+-- | The request attributes recorded at span start, following the stable HTTP
+-- and URL semantic conventions (see "Effectful.Tracing.SemConv"). @url.query@ is
+-- recorded only when the request carries a query string.
 requestAttributes :: Request -> [Attribute]
 requestAttributes req =
-  [ "http.method" .= decodeUtf8Lenient (requestMethod req)
-  , "http.target" .= decodeUtf8Lenient (rawPathInfo req <> rawQueryString req)
-  , "http.scheme" .= (if isSecure req then "https" else "http" :: Text)
-  , "http.flavor" .= httpFlavor (httpVersion req)
+  [ SemConv.httpRequestMethod .= decodeUtf8Lenient (requestMethod req)
+  , SemConv.urlPath .= decodeUtf8Lenient (rawPathInfo req)
+  , SemConv.urlScheme .= (if isSecure req then "https" else "http" :: Text)
+  , SemConv.networkProtocolVersion .= protocolVersion (httpVersion req)
   ]
+    <> [SemConv.urlQuery .= query | not (T.null query)]
+  where
+    -- 'rawQueryString' includes the leading '?'; the @url.query@ convention is
+    -- the query without it, and the attribute is omitted when there is none.
+    query =
+      let raw = decodeUtf8Lenient (rawQueryString req)
+       in fromMaybe raw (T.stripPrefix "?" raw)
 
--- | Render an 'HttpVersion' as the OTel @http.flavor@ value, for example
--- @\"1.1\"@.
-httpFlavor :: HttpVersion -> Text
-httpFlavor v = T.pack (show (httpMajor v)) <> "." <> T.pack (show (httpMinor v))
+-- | Render an 'HttpVersion' as the OTel @network.protocol.version@ value, for
+-- example @\"1.1\"@.
+protocolVersion :: HttpVersion -> Text
+protocolVersion v = T.pack (show (httpMajor v)) <> "." <> T.pack (show (httpMinor v))

@@ -98,7 +98,7 @@ data Attribute = Attribute { attributeKey :: !Text, attributeValue :: !Attribute
 The eight constructors encode the OpenTelemetry rule that an attribute is a
 scalar or a *homogeneous* array: a heterogeneous array is simply
 unrepresentable. The `ToAttributeValue` class plus the `(.=)` helper keep
-construction terse (`"http.status_code" .= (200 :: Int)`), and the instances
+construction terse (`"http.response.status_code" .= (200 :: Int)`), and the instances
 widen the obvious way (`String`/`Text` to `AttrText`, `Int`/`Int64` to
 `AttrInt`, `Float`/`Double` to `AttrDouble`).
 
@@ -394,11 +394,12 @@ by default) so the base package never pulls in a web stack.
 
 `traceMiddleware` (and `traceMiddlewareWith` for custom span names) wraps each
 request in a `server`-kind span. It continues an inbound distributed trace by
-reading `traceparent` / `tracestate`, attaches the `http.*` request attributes at
-span start, records `http.status_code` on the response (a 5xx sets the span
-status to error; a 4xx does not, because a client error is not the server's
-fault), and lets the shared lifecycle record any handler exception before it
-propagates.
+reading `traceparent` / `tracestate`, attaches the request attributes at span
+start (`http.request.method`, `url.path`, `url.scheme`, `network.protocol.version`,
+and `url.query` when there is one), records `http.response.status_code` on the
+response (a 5xx sets the span status to error; a 4xx does not, because a client
+error is not the server's fault), and lets the shared lifecycle record any handler
+exception before it propagates.
 
 The interesting seam is that **WAI runs in `IO` but the `Tracer` effect lives in
 `Eff`.** The middleware takes an unlift function obtained from `effectful`'s
@@ -421,15 +422,15 @@ a **request wrapper, not a `Manager` hook**, because the hooks run in `IO` with
 no effect context, whereas the wrapper stays in `Eff es` (no unlift needed). It
 injects the active context as `traceparent` / `tracestate` into the outbound
 request *inside* the span (so the downstream hop continues this trace), records
-`http.method` / `http.url` at start and `http.status_code` on the response (a
-status `>= 400` sets the span status to error), and relies on the shared
-lifecycle to record any thrown exception.
+`http.request.method` / `url.full` at start and `http.response.status_code` on the
+response (a status `>= 400` sets the span status to error), and relies on the
+shared lifecycle to record any thrown exception.
 
 Both helpers speak W3C Trace Context, so a `server` span opened by the middleware
 and a `client` span opened by the wrapper join into one distributed trace across
 the hop, provided the handler runs *inside* `Eff` so the server span is active
-when the outbound call fires. The attribute sets follow the OpenTelemetry HTTP
-semantic conventions v1.20.0.
+when the outbound call fires. The attribute sets follow the stable OpenTelemetry
+HTTP semantic conventions, with the keys collected in `Effectful.Tracing.SemConv`.
 
 ## Strictness posture
 
