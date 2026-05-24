@@ -11,6 +11,7 @@ module Main (main) where
 
 import Test.Tasty (TestTree, defaultMain, testGroup)
 
+import Effectful.Tracing.AsyncExceptionSpec qualified as AsyncExceptionSpec
 import Effectful.Tracing.AttributeSpec qualified as AttributeSpec
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
@@ -57,6 +58,7 @@ main =
           , PropagationSpec.tests
           , FuzzSpec.tests
           , ThunkSpec.tests
+          , AsyncExceptionSpec.tests
           ]
             <> otelTests
             <> waiTests

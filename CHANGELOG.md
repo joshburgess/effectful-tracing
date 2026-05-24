@@ -53,6 +53,23 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `nothunks` dependency and its orphan instances are test-only, so the published
   package takes on no new dependency. This test is what surfaced the
   `spanParentContext` retention fixed above.
+- Async-exception finalization tests (`Effectful.Tracing.AsyncExceptionSpec`):
+  `withSpan` finalizes its span on every exit, not just a clean return, because
+  finalization runs inside `generalBracket`. These interrupt a span body three
+  ways: a synchronous exception, a `timeout` cancellation, and an asynchronous
+  `killThread` of a forked thread, and assert that in each case the span still
+  reaches the sink with its end time set, an `Error` status, and an `exception`
+  event. The `killThread` case also exercises the active span surviving a
+  `forkIO`.
+- Space-leak regression guard (`effectful-tracing-space-leak`): a standalone
+  test executable, separate from the tasty suite, that opens and closes 100,000
+  spans through the in-memory interpreter and forces every captured span with a
+  strict fold, run under a deliberately tiny maximum stack (`-K1K`). A
+  thunk-accumulation regression in the span lifecycle (a lazy accumulator, a
+  non-strict sink write, an un-forced field) would defer that work into an O(n)
+  evaluation stack and overflow the 1K limit; the current strict lifecycle runs
+  it in O(1) stack. It is kept out of the tasty suite because the property tests
+  legitimately need a larger stack and so cannot share these RTS options.
 - Compile-checked documentation examples: `Effectful.Tracing.CompileTest` now
   mirrors every Haskell code block in `README.md`, `docs/tutorial.md`, and
   `docs/cookbook.md` against the real API, so a renamed export or changed

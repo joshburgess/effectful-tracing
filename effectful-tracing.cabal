@@ -142,6 +142,7 @@ test-suite effectful-tracing-test
   main-is:        Main.hs
   ghc-options:    -threaded -rtsopts "-with-rtsopts=-N"
   other-modules:
+    Effectful.Tracing.AsyncExceptionSpec
     Effectful.Tracing.AttributeSpec
     Effectful.Tracing.CompileTest
     Effectful.Tracing.ConcurrentSpec
@@ -196,6 +197,21 @@ test-suite effectful-tracing-test
       , http-client >=0.7 && <0.8
       , wai         >=3.2 && <3.3
       , warp        >=3.3 && <3.5
+
+-- A standalone space-leak regression guard, run under a deliberately tiny
+-- maximum stack (-K1K) so a thunk-accumulation regression in the span lifecycle
+-- overflows and fails. Kept separate from the tasty suite, whose property tests
+-- legitimately need a larger stack and so cannot share these RTS options.
+test-suite effectful-tracing-space-leak
+  import:         warnings, language
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test-space-leak
+  main-is:        Main.hs
+  ghc-options:    -rtsopts "-with-rtsopts=-K1K"
+  build-depends:
+    , base              >=4.18 && <4.21
+    , effectful-core    ==2.6.1.0
+    , effectful-tracing
 
 benchmark effectful-tracing-bench
   import:         warnings, language
