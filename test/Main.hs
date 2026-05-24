@@ -4,11 +4,14 @@
 -- Copyright   : (c) The effectful-tracing contributors
 -- License     : BSD-3-Clause
 --
--- Phase 0 scaffolding: the suite runs and reports zero tests. Per-phase specs
--- are added under @test/Effectful/Tracing/@ as the library is built out.
+-- Per-phase specs live under @test/Effectful/Tracing/@ and are aggregated here.
 module Main (main) where
 
 import Test.Tasty (defaultMain, testGroup)
 
+import Effectful.Tracing.PropertySpec qualified as PropertySpec
+
 main :: IO ()
-main = defaultMain (testGroup "effectful-tracing" [])
+main =
+  defaultMain
+    (testGroup "effectful-tracing" [PropertySpec.tests])

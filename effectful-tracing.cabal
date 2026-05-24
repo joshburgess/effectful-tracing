@@ -46,17 +46,40 @@ common language
 library
   import:          warnings, language
   hs-source-dirs:  src
-  exposed-modules: Effectful.Tracing
-  build-depends:   base >=4.20 && <4.21
+  exposed-modules:
+    Effectful.Tracing
+    Effectful.Tracing.Attribute
+    Effectful.Tracing.Internal.Clock
+    Effectful.Tracing.Internal.Ids
+    Effectful.Tracing.Internal.Types
+
+  build-depends:
+    , base       >=4.20 && <4.21
+    , bytestring >=0.12  && <0.13
+    , hashable   >=1.4   && <1.6
+    , random     >=1.2.1 && <1.4
+    , text       >=2.1   && <2.2
+    , time       >=1.12  && <1.15
+    , vector     >=0.13  && <0.14
 
 test-suite effectful-tracing-test
   import:         warnings, language
   type:           exitcode-stdio-1.0
   hs-source-dirs: test
   main-is:        Main.hs
+  other-modules:
+    Effectful.Tracing.Gen
+    Effectful.Tracing.PropertySpec
+
   build-depends:
-    , base   >=4.20 && <4.21
-    , tasty  >=1.4  && <1.6
+    , base              >=4.20 && <4.21
+    , effectful-tracing
+    , hedgehog          >=1.4  && <1.6
+    , tasty             >=1.4  && <1.6
+    , tasty-hedgehog    >=1.4  && <1.5
+    , text              >=2.1  && <2.2
+    , time              >=1.12 && <1.15
+    , vector            >=0.13 && <0.14
 
 benchmark effectful-tracing-bench
   import:         warnings, language
