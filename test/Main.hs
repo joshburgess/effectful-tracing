@@ -13,6 +13,7 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 
 import Effectful.Tracing.AsyncExceptionSpec qualified as AsyncExceptionSpec
 import Effectful.Tracing.AttributeSpec qualified as AttributeSpec
+import Effectful.Tracing.BaggageSpec qualified as BaggageSpec
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
 import Effectful.Tracing.FuzzSpec qualified as FuzzSpec
@@ -64,6 +65,7 @@ main =
           , ConcurrentSpec.tests
           , PropagationSpec.tests
           , B3Spec.tests
+          , BaggageSpec.tests
           , FuzzSpec.tests
           , ThunkSpec.tests
           , AsyncExceptionSpec.tests

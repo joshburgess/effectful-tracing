@@ -91,6 +91,7 @@ library
   exposed-modules:
     Effectful.Tracing
     Effectful.Tracing.Attribute
+    Effectful.Tracing.Baggage
     Effectful.Tracing.Concurrent
     Effectful.Tracing.Effect
     Effectful.Tracing.Interpreter.InMemory
@@ -98,6 +99,7 @@ library
     Effectful.Tracing.Interpreter.PrettyPrint
     Effectful.Tracing.Propagation
     Effectful.Tracing.Propagation.B3
+    Effectful.Tracing.Propagation.Baggage
     Effectful.Tracing.Sampler
     Effectful.Tracing.SemConv
     Effectful.Tracing.Testing
@@ -147,6 +149,7 @@ test-suite effectful-tracing-test
   other-modules:
     Effectful.Tracing.AsyncExceptionSpec
     Effectful.Tracing.AttributeSpec
+    Effectful.Tracing.BaggageSpec
     Effectful.Tracing.CompileTest
     Effectful.Tracing.ConcurrentSpec
     Effectful.Tracing.FuzzSpec

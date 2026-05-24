@@ -64,7 +64,15 @@ import Effectful.Tracing
   , (.=)
   )
 import Effectful.Tracing.Attribute (Attribute (Attribute), AttributeValue (AttrBool, AttrInt))
+import Effectful.Tracing.Baggage
+  ( BaggageContext
+  , getBaggage
+  , lookupBaggageValue
+  , runBaggageWith
+  , withBaggageEntry
+  )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
+import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
 import Effectful.Tracing.Testing
   ( findSpan
   , hasStatus
@@ -171,6 +179,9 @@ docExamples =
     `seq` (cbConsume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Consume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Forward :: Eff '[Tracer] [Header])
+    `seq` (cbServeWithBaggage :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
+    `seq` (cbPriorityOf :: Eff '[BaggageContext] (Maybe Text))
+    `seq` (cbHandleBaggage :: Eff '[BaggageContext, Tracer] [Header])
     `seq` (cbCheckHandlerTrace :: IO ())
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
@@ -281,6 +292,18 @@ cbB3Consume headers =
 -- cookbook: "Interoperate with B3 (Zipkin) headers" (forward as a single b3 header)
 cbB3Forward :: Tracer :> es => Eff es [Header]
 cbB3Forward = injectContextB3
+
+-- cookbook: "Carry application context as baggage" (seed inbound baggage)
+cbServeWithBaggage :: [Header] -> Eff (BaggageContext : es) a -> Eff es a
+cbServeWithBaggage headers = runBaggageWith (extractBaggage headers)
+
+-- cookbook: "Carry application context as baggage" (read a value in scope)
+cbPriorityOf :: BaggageContext :> es => Eff es (Maybe Text)
+cbPriorityOf = lookupBaggageValue "request.priority" <$> getBaggage
+
+-- cookbook: "Carry application context as baggage" (scope an entry, forward it)
+cbHandleBaggage :: (BaggageContext :> es, Tracer :> es) => Eff es [Header]
+cbHandleBaggage = withBaggageEntry "request.priority" "high" $ withSpan "handle" injectBaggage
 
 -- cookbook: "Assert on traces in your tests"
 cbCheckHandlerTrace :: IO ()

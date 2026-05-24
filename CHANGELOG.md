@@ -233,6 +233,20 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `hasAttributeValue`, `hasStatus`, `lookupEvent` / `hasEvent`, and `hasKind`. The
   matchers are plain `Bool` / `Maybe` with no test-framework dependency, so they
   compose with `tasty-hunit`, `hspec`, `hedgehog`, or anything else.
+- W3C Baggage propagation: `Effectful.Tracing.Baggage` adds ambient, key-value
+  context that rides alongside a trace but is independent of span attributes. A
+  dynamic `BaggageContext` effect carries it the same way the active span is
+  carried (lexically scoped, propagating into forked threads), with `getBaggage`,
+  `withBaggageEntry` / `localBaggage`, and the `runBaggage` / `runBaggageWith`
+  interpreters; the `Baggage` / `BaggageEntry` value model and its pure operations
+  (`insertBaggage`, `lookupBaggageValue`, `baggageFromList`, and friends) are
+  usable outside the effect too. `Effectful.Tracing.Propagation.Baggage` is the
+  `baggage`-header codec: `injectBaggage` / `extractBaggage` (and the underlying
+  `renderBaggage` / `parseBaggage`) percent-encode values, carry member metadata
+  verbatim, trim optional whitespace, skip malformed members, and enforce the
+  180-entry cap (`maxBaggageEntries`). It is built directly against the effect
+  (no SDK dependency, no new dependency, no cabal flag) and the parser is covered
+  by a fuzz totality property.
 - Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
   span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
   `asyncInstrumented`, `concurrentlyInstrumented`, and

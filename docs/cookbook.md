@@ -198,6 +198,45 @@ b3Forward :: (Tracer :> es) => Eff es [Header]
 b3Forward = injectContextB3
 ```
 
+## Carry application context as baggage
+
+When you want a value to ride along with the trace and be readable by every
+downstream service (a tenant id, a request priority, an experiment bucket), use
+**baggage** rather than a span attribute. Baggage is ambient: it is in scope for
+everything that runs within it, not attached to one span, and it propagates
+across hops through the `baggage` header. The `Effectful.Tracing.Baggage` effect
+holds it; `Effectful.Tracing.Propagation.Baggage` renders and parses the header.
+
+```haskell
+import Data.Text (Text)
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer, withSpan)
+import Effectful.Tracing.Baggage
+  (BaggageContext, getBaggage, lookupBaggageValue, runBaggageWith, withBaggageEntry)
+import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
+import Network.HTTP.Types (Header)
+
+-- inbound: seed the ambient baggage from the request and discharge the effect,
+-- so everything in 'work' runs with that baggage in scope
+serveWithBaggage :: [Header] -> Eff (BaggageContext : es) a -> Eff es a
+serveWithBaggage headers = runBaggageWith (extractBaggage headers)
+
+-- read a baggage value anywhere in scope, with no plumbing through arguments
+priorityOf :: (BaggageContext :> es) => Eff es (Maybe Text)
+priorityOf = lookupBaggageValue "request.priority" <$> getBaggage
+
+-- add an entry for a sub-scope, and forward all baggage to the next hop
+handle :: (BaggageContext :> es, Tracer :> es) => Eff es [Header]
+handle = withBaggageEntry "request.priority" "high" $ withSpan "handle" $
+  injectBaggage   -- the outbound `baggage` header, carrying "request.priority"
+```
+
+Note `runBaggageWith` (or `runBaggage` to start empty) must wrap the computation
+to discharge the `BaggageContext` effect, just as an interpreter discharges
+`Tracer`. Baggage and span attributes are independent: putting a key in baggage
+does not attach it to any span. Copy it onto a span explicitly with
+`addAttribute` if you also want it recorded there.
+
 ## Name server spans by route, not just method
 
 `traceMiddleware` names each server span after the request method (`GET`,

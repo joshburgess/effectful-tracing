@@ -61,6 +61,18 @@ import Effectful.Tracing.Propagation.B3
   , b3TraceIdHeader
   , extractContextB3
   )
+import Effectful.Tracing.Baggage
+  ( Baggage
+  , BaggageEntry (BaggageEntry)
+  , baggageSize
+  , baggageToList
+  )
+import Effectful.Tracing.Propagation.Baggage
+  ( baggageHeader
+  , extractBaggage
+  , maxBaggageEntries
+  , parseBaggage
+  )
 
 tests :: TestTree
 tests =
@@ -70,6 +82,8 @@ tests =
     , testProperty "extractContext is total on traceparent-shaped input" prop_extractContextShaped
     , testProperty "extractContextB3 is total on arbitrary headers" prop_extractB3Total
     , testProperty "extractContextB3 is total on b3-shaped input" prop_extractB3Shaped
+    , testProperty "extractBaggage is total on arbitrary headers" prop_extractBaggageTotal
+    , testProperty "parseBaggage is total on baggage-shaped input" prop_parseBaggageShaped
     , testProperty "traceIdFromHex is total on arbitrary text" prop_traceIdFromHexTotal
     , testProperty "spanIdFromHex is total on arbitrary text" prop_spanIdFromHexTotal
     , testProperty "traceStateFromHeader is total and capped" prop_traceStateFromHeaderTotal
@@ -126,6 +140,50 @@ prop_extractB3Shaped = property $ do
   single <- forAll genB3ish
   ok <- eval (validContext (extractContextB3 [(b3Header, single)]))
   assert ok
+
+-- | 'extractBaggage' is total: feeding random bytes to the @baggage@ header must
+-- yield a baggage set whose entries are all forceable and whose size respects
+-- the W3C cap.
+prop_extractBaggageTotal :: Property
+prop_extractBaggageTotal = property $ do
+  raw <- forAll genFuzzBytes
+  ok <- eval (validBaggage (extractBaggage [(baggageHeader, raw)]))
+  assert ok
+
+-- | The same totality check biased toward baggage-shaped text (comma-joined
+-- @key=value@ members with partial percent escapes, delimiters, and metadata),
+-- so the member-split, percent-decode, and metadata branches are exercised.
+prop_parseBaggageShaped :: Property
+prop_parseBaggageShaped = property $ do
+  t <- forAll genBaggageish
+  ok <- eval (validBaggage (parseBaggage t))
+  assert ok
+
+-- | A parsed baggage set is well-formed: every key, value, and metadata string
+-- forces without bottom (summing their lengths walks them), and the entry count
+-- never exceeds the cap.
+validBaggage :: Baggage -> Bool
+validBaggage b =
+  let n =
+        sum
+          [ T.length k + T.length v + maybe 0 T.length meta
+          | (k, BaggageEntry v meta) <- baggageToList b
+          ]
+   in n `seq` baggageSize b <= maxBaggageEntries
+
+-- | Baggage-shaped text: 0 to 6 comma-joined members, each a token-ish key, an
+-- @=@, a value mixing spaces, delimiters, and partial percent escapes, and an
+-- optional metadata segment.
+genBaggageish :: Gen Text
+genBaggageish = do
+  members <- Gen.list (Range.linear 0 6) genMember
+  pure (T.intercalate "," members)
+  where
+    genMember = do
+      k <- Gen.text (Range.linear 0 8) (Gen.element ("abcXYZ-._09" :: String))
+      v <- Gen.text (Range.linear 0 12) (Gen.element ("ab %20%2New,York;x" :: String))
+      meta <- Gen.element ["", ";ttl=30", ";public"]
+      pure (k <> "=" <> v <> meta)
 
 -- | 'traceIdFromHex' returns 'Nothing' or a 16-byte id; nothing else, and never
 -- a bottom.
