@@ -1,0 +1,68 @@
+cabal-version:      3.0
+name:               effectful-tracing
+version:            0.1.0.0
+synopsis:           Tracing as a scoped effect, built on effectful, with OpenTelemetry interop.
+description:
+  A Haskell tracing library built natively on the @effectful@ effect system.
+  Spans are modeled as scoped, higher-order effects, so the current span is
+  lexical rather than thread-local. Real export is provided by an
+  OpenTelemetry interpreter that compiles down to @hs-opentelemetry@; other
+  interpreters (no-op, in-memory, pretty-print) cover testing and development.
+  .
+  This is an early, in-development release. See the project build plan for the
+  phased roadmap.
+homepage:           https://github.com/joshburgess/effectful-tracing
+bug-reports:        https://github.com/joshburgess/effectful-tracing/issues
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             The effectful-tracing contributors
+maintainer:         joshualoganburgess@gmail.com
+copyright:          (c) The effectful-tracing contributors
+category:           Tracing, Observability, Effect
+build-type:         Simple
+tested-with:        GHC == 9.10.3
+extra-doc-files:
+  README.md
+  CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: https://github.com/joshburgess/effectful-tracing.git
+
+common warnings
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-export-lists
+    -Wpartial-fields
+    -Wredundant-constraints
+
+common language
+  default-language: GHC2021
+
+library
+  import:          warnings, language
+  hs-source-dirs:  src
+  exposed-modules: Effectful.Tracing
+  build-depends:   base >=4.20 && <4.21
+
+test-suite effectful-tracing-test
+  import:         warnings, language
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:        Main.hs
+  build-depends:
+    , base   >=4.20 && <4.21
+    , tasty  >=1.4  && <1.6
+
+benchmark effectful-tracing-bench
+  import:         warnings, language
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: bench
+  main-is:        Main.hs
+  build-depends:
+    , base        >=4.20 && <4.21
+    , tasty-bench >=0.3  && <0.5

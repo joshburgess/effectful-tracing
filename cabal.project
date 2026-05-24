@@ -1,0 +1,14 @@
+packages: .
+
+tests:      True
+benchmarks: True
+
+-- Toolchain pin (see PROJECT_BUILD_PLAN.md -> Tech Stack & Decisions).
+-- The project targets GHC 9.10.3 with the latest effectful that lists GHC 9.10
+-- in its tested-with. effectful is not yet a build dependency (the library is
+-- still an empty skeleton in Phase 0); the constraint is recorded here so the
+-- version is locked the moment Phase 1/2 starts importing it, and so a freeze
+-- file captures it consistently.
+constraints:
+    effectful      ==2.6.1.0
+  , effectful-core ==2.6.1.0

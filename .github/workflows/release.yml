@@ -1,0 +1,33 @@
+name: Release
+
+# Placeholder release workflow, fleshed out in Phase 10 (Documentation & Release).
+# For now it only validates that the package can be packaged and documented,
+# triggered manually. It does not publish to Hackage yet.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: sdist & haddock (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: cabal check
+        run: cabal check
+
+      - name: Build source distribution
+        run: cabal sdist all
+
+      - name: Build Haddock for Hackage
+        run: cabal haddock --haddock-for-hackage

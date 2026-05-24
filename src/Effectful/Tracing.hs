@@ -1,0 +1,14 @@
+-- |
+-- Module      : Effectful.Tracing
+-- Description : Top-level re-exports for the effectful-tracing library.
+-- Copyright   : (c) The effectful-tracing contributors
+-- License     : BSD-3-Clause
+-- Maintainer  : joshualoganburgess@gmail.com
+-- Stability   : experimental
+--
+-- This is the public entry point for @effectful-tracing@. It will re-export the
+-- @Tracer@ effect, its smart constructors, and the bundled interpreters as the
+-- library is built out phase by phase.
+--
+-- At this stage (Phase 0 scaffolding) it intentionally exports nothing.
+module Effectful.Tracing () where

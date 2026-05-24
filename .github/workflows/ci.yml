@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build & test (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      - name: Configure
+        run: cabal configure --enable-tests --enable-benchmarks
+
+      - name: Freeze
+        run: cabal freeze
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.10.3-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-
+
+      - name: Build (incl. benchmarks)
+        run: cabal build all
+
+      - name: Test
+        run: cabal test all --test-show-details=direct
+
+  fourmolu:
+    name: fourmolu (format check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/run-fourmolu@v11
+        with:
+          version: "0.16.2.0"
+          pattern: |
+            src/**/*.hs
+            test/**/*.hs
+            bench/**/*.hs
+
+  hlint:
+    name: hlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up hlint
+        uses: haskell-actions/hlint-setup@v2
+      - name: Run hlint
+        uses: haskell-actions/hlint-run@v2
+        with:
+          path: '["src/", "test/", "bench/"]'
+          fail-on: warning
