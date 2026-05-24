@@ -1,7 +1,7 @@
 # effectful-tracing
 
 [![CI](https://github.com/joshburgess/effectful-tracing/actions/workflows/ci.yml/badge.svg)](https://github.com/joshburgess/effectful-tracing/actions/workflows/ci.yml)
-[![Hackage](https://img.shields.io/badge/hackage-not%20yet%20released-lightgrey.svg)](#)
+[![Hackage](https://img.shields.io/badge/hackage-not%20yet%20released-lightgrey.svg)](https://hackage.haskell.org/package/effectful-tracing)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 Tracing as a scoped effect for Haskell, built natively on
@@ -124,6 +124,11 @@ runServer app =
   withEffToIO (ConcUnlift Persistent Unlimited) $ \runInIO ->
     Warp.run 8080 (traceMiddleware runInIO app)
 ```
+
+`traceMiddleware` names each server span after the request method (`GET`,
+`POST`). When your router knows the matched route template, `traceMiddlewareWith`
+lets you name spans `"{method} {route}"` instead. See the cookbook recipe "Name
+server spans by route, not just method".
 
 On the outbound side, call downstream services through `httpLbsTraced`. It opens
 a `client` span and writes `traceparent` / `tracestate` into the request, so the

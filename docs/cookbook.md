@@ -118,6 +118,10 @@ collector decides what to retain.
 Wrap your chosen sampler into an interpreter the usual way:
 
 ```haskell
+import Effectful (runEff)
+import Effectful.Tracing.Interpreter.InMemory
+  (newCapturedSpans, readCapturedSpans, runTracerInMemoryWith)
+
 runEff $ do
   captured <- newCapturedSpans
   _ <- runTracerInMemoryWith priorityOr1Percent captured action
@@ -133,9 +137,16 @@ triggers, use the two instrumentation helpers together (cabal flags `wai` and
 `traceparent` into the next hop.
 
 ```haskell
+import Control.Monad.IO.Class (liftIO)
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
 import Effectful.Tracing.Instrumentation.Wai (traceMiddleware)
 import Effectful.Tracing.Instrumentation.HttpClient (httpLbsTraced)
+import Network.HTTP.Client (Manager, parseRequest)
 
+-- 'Response' and 'buildResponse' are your application's own response type and
+-- builder; 'httpLbsTraced' returns an 'http-client' 'Response' you map into them.
+--
 -- The request handler runs in Eff, so the server span opened by the middleware
 -- is the active span while the handler runs. Any httpLbsTraced call inside it
 -- therefore nests under the server span and shares its trace.
@@ -155,10 +166,35 @@ a trace received out of band (for example from a message queue header), use
 
 ```haskell
 import Effectful.Tracing (extractContext, withRemoteParent)
+import Network.HTTP.Types (Header)
 
 consume :: (Tracer :> es) => [Header] -> Eff es a -> Eff es a
 consume headers work =
   maybe id withRemoteParent (extractContext headers) work
+```
+
+## Name server spans by route, not just method
+
+`traceMiddleware` names each server span after the request method (`GET`,
+`POST`), which is deliberately low-cardinality. When your routing layer knows the
+matched route template, `traceMiddlewareWith` lets you name spans
+`"{method} {route}"`, which is far more useful in a trace list. Pass a route
+*template* (`/users/{id}`), not the raw path (`/users/9921`), or you reintroduce
+the high cardinality you were avoiding.
+
+```haskell
+import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8Lenient)
+import Effectful.Tracing.Instrumentation.Wai (traceMiddlewareWith)
+import Network.Wai (Request, rawPathInfo, requestMethod)
+
+-- Illustrative: this uses the raw path. In a real app, pass the matched route
+-- template from your router instead of 'rawPathInfo'.
+nameByRoute :: Request -> Text
+nameByRoute req =
+  decodeUtf8Lenient (requestMethod req) <> " " <> decodeUtf8Lenient (rawPathInfo req)
+
+-- Then wrap your app with `traceMiddlewareWith nameByRoute runInIO app`.
 ```
 
 ## Instrument a long-running worker
@@ -194,3 +230,32 @@ enqueueBackground = withSpan "request" $ do
   _ <- forkLinked (withSpan "background.reindex" doReindex)
   pure ()  -- returns immediately; the background span lives on as its own trace
 ```
+
+## Customize the pretty-printed output
+
+`defaultPrettyPrintConfig` shows attributes and events, no color, and durations
+only. `PrettyPrintConfig` is a plain record, so override the fields you want.
+There is no terminal auto-detection: set `useColor` yourself, for example from
+`hIsTerminalDevice`.
+
+```haskell
+import Effectful (runEff)
+import Effectful.Tracing.Interpreter.PrettyPrint
+  (PrettyPrintConfig (..), TimeFormat (RelativeToTraceStart), defaultPrettyPrintConfig, runTracerPretty)
+import System.IO (hIsTerminalDevice, stderr)
+
+-- Colorize only when stderr is a terminal, show offsets from the trace start,
+-- and hide events to keep the tree compact.
+run action = do
+  color <- hIsTerminalDevice stderr
+  let config =
+        (defaultPrettyPrintConfig stderr)
+          { useColor = color
+          , showEvents = False
+          , timeFormat = RelativeToTraceStart
+          }
+  runEff (runTracerPretty config action)
+```
+
+`TimeFormat` is one of `DurationOnly` (the default), `RelativeToTraceStart`
+(`+12ms (8ms)`), or `Absolute` (wall-clock start plus duration).

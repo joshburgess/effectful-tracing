@@ -113,7 +113,10 @@ sampledRun action = runEff $ do
 The built-in samplers are `alwaysOn`, `alwaysOff`, `traceIdRatioBased fraction`
 (a deterministic fraction keyed on the trace id, so every span in a trace shares
 one decision), and `parentBased` (inherit the parent's decision, fall back to a
-root sampler). See the cookbook for "sample 1% but keep 100% of errors".
+root sampler). `parentBased` takes a `ParentBasedConfig`; the usual one is
+`defaultParentBasedConfig rootSampler`, so you write
+`parentBased (defaultParentBasedConfig alwaysOn)` as in section 6. See the
+cookbook for "sample 1% but keep 100% of errors".
 
 ## 4. Concurrency
 
@@ -122,9 +125,8 @@ travels across effectful's concurrency boundary automatically. The helpers in
 `Effectful.Tracing.Concurrent` make spawned work nest correctly.
 
 ```haskell
-import Effectful.Concurrent (Concurrent, runConcurrent)
-import Effectful.Concurrent.Async (wait)
-import Effectful.Tracing.Concurrent (asyncInstrumented, concurrentlyInstrumented)
+import Effectful.Concurrent (Concurrent)
+import Effectful.Tracing.Concurrent (concurrentlyInstrumented)
 
 fanOut :: (Tracer :> es, Concurrent :> es) => Eff es (Int, Int)
 fanOut = withSpan "fan.out" $
@@ -151,11 +153,15 @@ that arrives with a `traceparent` continues the same distributed trace, and an
 outbound call propagates it to the next hop.
 
 ```haskell
+import Control.Monad.IO.Class (liftIO)
+import Effectful
+  (IOE, Limit (Unlimited), Persistence (Persistent), UnliftStrategy (ConcUnlift), withEffToIO)
 import Effectful.Tracing.Instrumentation.Wai (traceMiddleware)
 import Effectful.Tracing.Instrumentation.HttpClient (httpLbsTraced)
 import Network.HTTP.Client (Manager, parseRequest)
 import qualified Network.Wai.Handler.Warp as Warp
 
+-- 'myApp :: Application' is your own WAI application; the middleware wraps it.
 -- Inbound: a server span per request (use a concurrent unlift for a real server).
 serve :: (IOE :> es, Tracer :> es) => Eff es ()
 serve =
