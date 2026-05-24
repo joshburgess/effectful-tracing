@@ -17,7 +17,7 @@
 -- @hs-opentelemetry-sdk@.
 --
 -- __Identity stays ours.__ The library mints its own trace and span ids and runs
--- its own 'Sampler' before OpenTelemetry sees the span; the translation copies
+-- its own 't:Sampler' before OpenTelemetry sees the span; the translation copies
 -- those ids verbatim into the exported span. This keeps the ids consistent with
 -- what "Effectful.Tracing.Propagation" injects on the wire, which would not hold
 -- if we delegated id generation to OpenTelemetry's @createSpan@. The design note
@@ -101,8 +101,8 @@ data OtelConfig = OtelConfig
   }
 
 -- | Interpret 'Tracer' by exporting every recorded span to the configured
--- OpenTelemetry processors. Spans dropped by the 'Sampler' are not exported;
--- 'RecordOnly' and 'RecordAndSample' both are (the @sampled@ flag distinguishes
+-- OpenTelemetry processors. Spans dropped by the 't:Sampler' are not exported;
+-- 'Effectful.Tracing.Sampler.RecordOnly' and 'Effectful.Tracing.Sampler.RecordAndSample' both are (the @sampled@ flag distinguishes
 -- them on the wire). When the scope ends, every processor is force-flushed so
 -- buffered spans are not lost.
 --
@@ -143,7 +143,7 @@ export tracer processors completed =
       ref <- newIORef immutable
       mapM_ (`spanProcessorOnEnd` ref) processors
 
--- | Translate one of our completed 'Span's into an @hs-opentelemetry@
+-- | Translate one of our completed 't:Span's into an @hs-opentelemetry@
 -- 'OTel.ImmutableSpan'. Returns 'Left' only if a trace or span id is not the
 -- byte length OpenTelemetry requires, which cannot happen for spans this library
 -- produces; the 'Either' makes the translation total and gives the round-trip
@@ -212,7 +212,7 @@ toOtelStatus = \case
   Ok -> OTel.Ok
   Error message -> OTel.Error message
 
--- | Our 'Timestamp' is a 'UTCTime'; OpenTelemetry's is a @TimeSpec@ split into
+-- | Our 't:Timestamp' is a 'Data.Time.Clock.UTCTime'; OpenTelemetry's is a @TimeSpec@ split into
 -- whole seconds and nanoseconds since the Unix epoch.
 toOtelTimestamp :: Timestamp -> OtelCommon.Timestamp
 toOtelTimestamp (Timestamp utc) =

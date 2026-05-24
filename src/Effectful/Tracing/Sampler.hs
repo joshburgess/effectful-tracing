@@ -7,16 +7,16 @@
 -- License     : BSD-3-Clause
 -- Stability   : experimental
 --
--- A 'Sampler' decides, when a span starts, whether it is dropped, recorded but
+-- A 't:Sampler' decides, when a span starts, whether it is dropped, recorded but
 -- not exported, or recorded and exported. The decision is made from the
--- 'SamplerInput': the parent context, the trace id, and the span's name, kind,
+-- 't:SamplerInput': the parent context, the trace id, and the span's name, kind,
 -- initial attributes, and links.
 --
 -- == Why @shouldSample@ is plain @IO@
 --
--- 'shouldSample' returns @'IO' 'SamplingResult'@ rather than @'Effectful.Eff' es@.
+-- 'shouldSample' returns @'IO' 't:SamplingResult'@ rather than @'Effectful.Eff' es@.
 -- The built-in samplers are pure or clock-only, so 'IO' is sufficient, and it
--- keeps 'Sampler' a plain value that interpreters can hold without threading an
+-- keeps 't:Sampler' a plain value that interpreters can hold without threading an
 -- effect row through their configuration. The cost is that a user-written
 -- sampler cannot use other effects (for example, reading configuration through
 -- an effect). If that turns out to matter, the alternative is
@@ -71,7 +71,7 @@ data SamplingDecision
   deriving (Eq, Show, Enum, Bounded)
 
 -- | A sampler's verdict: a 'SamplingDecision', any attributes the sampler wants
--- added to the span, and an optional replacement 'TraceState'.
+-- added to the span, and an optional replacement 't:TraceState'.
 data SamplingResult = SamplingResult
   { decision :: !SamplingDecision
   , extraAttributes :: ![Attribute]
@@ -79,7 +79,7 @@ data SamplingResult = SamplingResult
   }
   deriving (Eq, Show)
 
--- | A 'SamplingResult' carrying just a decision: no extra attributes, no
+-- | A 't:SamplingResult' carrying just a decision: no extra attributes, no
 -- trace-state change.
 simpleResult :: SamplingDecision -> SamplingResult
 simpleResult d =

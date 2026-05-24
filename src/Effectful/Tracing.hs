@@ -8,7 +8,7 @@
 --
 -- The public surface of @effectful-tracing@. This re-exports the core,
 -- effect-system-independent data model (identifiers, attributes, trace flags
--- and state, the immutable 'Span' record) together with the 'Tracer' effect and
+-- and state, the immutable 't:Span' record) together with the 'Tracer' effect and
 -- its smart-constructor API, the sampling and context-propagation surface, and
 -- the no-op interpreter. The span-opening interpreters live in their own
 -- modules: @Effectful.Tracing.Interpreter.InMemory@,

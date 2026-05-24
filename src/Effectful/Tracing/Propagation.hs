@@ -11,7 +11,7 @@
 -- <https://www.w3.org/TR/trace-context/ W3C Trace Context> @traceparent@ and
 -- @tracestate@ headers. 'injectContext' serializes the active span for an
 -- outbound request; 'extractContext' parses the headers from an inbound request
--- into a 'SpanContext', which 'withRemoteParent' then continues as a local
+-- into a 't:SpanContext', which 'withRemoteParent' then continues as a local
 -- trace.
 --
 -- > -- server side: rejoin the caller's trace
@@ -104,12 +104,12 @@ renderTraceparent context =
     , flagsToHex (spanContextTraceFlags context)
     ]
 
--- | A 'TraceFlags' byte as two lowercase hex digits.
+-- | A 't:TraceFlags' byte as two lowercase hex digits.
 flagsToHex :: TraceFlags -> Text
 flagsToHex (TraceFlags w) = T.justifyRight 2 '0' (T.pack (showHex w ""))
 
 -- | Parse @traceparent@ / @tracestate@ headers from an inbound request into a
--- 'SpanContext' marked remote. Returns 'Nothing' if @traceparent@ is absent or
+-- 't:SpanContext' marked remote. Returns 'Nothing' if @traceparent@ is absent or
 -- malformed (an unparsable @tracestate@ is treated as empty rather than failing
 -- the whole extraction, per the spec's resilience guidance). Header lookup is
 -- case-insensitive because 'HeaderName' is case-insensitive.
@@ -152,7 +152,7 @@ parseTraceparent raw traceState =
 validVersion :: Text -> Bool
 validVersion v = T.length v == 2 && T.all isHexDigit v && v /= "ff"
 
--- | Parse the two-hex-digit flags field into a 'TraceFlags' byte.
+-- | Parse the two-hex-digit flags field into a 't:TraceFlags' byte.
 parseFlags :: Text -> Maybe TraceFlags
 parseFlags t
   | T.length t == 2

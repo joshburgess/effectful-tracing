@@ -19,8 +19,8 @@
 -- exception.
 --
 -- 'interpretTracer' captures that lifecycle once and parameterizes the only
--- thing the interpreters differ on: what to do with a completed 'Span'. The
--- sink is a plain @'Span' -> 'IO' ()@, which is all the in-memory (append to a
+-- thing the interpreters differ on: what to do with a completed 't:Span'. The
+-- sink is a plain @'t:Span' -> 'IO' ()@, which is all the in-memory (append to a
 -- buffer), pretty-print (render a finished trace), and OpenTelemetry (hand to
 -- an exporter) interpreters need.
 --
@@ -103,7 +103,7 @@ data ActiveSpan = ActiveSpan
   }
 
 -- | Interpret 'Tracer' by opening a real span for each scoped action and
--- handing every completed, non-dropped 'Span' to the given sink.
+-- handing every completed, non-dropped 't:Span' to the given sink.
 --
 -- The active span is lexical: scoped actions run inside a fresh child span
 -- installed for their scope only, emit operations annotate the
@@ -113,10 +113,10 @@ data ActiveSpan = ActiveSpan
 -- killed, and exceptions still propagate (the interpreter records, it does not
 -- swallow).
 --
--- The 'Sampler' is consulted once per span, at start. A 'Drop' decision still
+-- The 't:Sampler' is consulted once per span, at start. A 'Drop' decision still
 -- runs the scoped action (the user's code must execute) and still establishes a
 -- lexical span for nested operations, but the completed span is not handed to
--- the sink; 'RecordOnly' and 'RecordAndSample' both reach the sink. The
+-- the sink; 'Effectful.Tracing.Sampler.RecordOnly' and 'RecordAndSample' both reach the sink. The
 -- @sampled@ trace flag is set exactly when the decision is 'RecordAndSample',
 -- and the sampler's extra attributes and trace-state replacement are applied to
 -- the span.
@@ -184,7 +184,7 @@ withActive
   -> Eff es ()
 withActive f = ask >>= maybe (pure ()) f
 
--- | Build a fresh 'ActiveSpan': inherit trace identity from the parent (or mint
+-- | Build a fresh 't:ActiveSpan': inherit trace identity from the parent (or mint
 -- a new trace at a root), consult the sampler, allocate a span id, set the
 -- @sampled@ flag and any sampler-supplied attributes and trace state, record
 -- the start time, and seed the builder.
@@ -242,7 +242,7 @@ openSpan sampler name args parent pendingLinks = do
       , activeDecision = decision result
       }
 
--- | A synthetic 'ActiveSpan' standing in for a remote parent. It exists only to
+-- | A synthetic 't:ActiveSpan' standing in for a remote parent. It exists only to
 -- be the parent context for spans opened inside a 'WithRemoteParent' scope: it
 -- is never finalized or emitted, so its builder is a throwaway and its name and
 -- kind are placeholders. The context is marked remote.
@@ -264,7 +264,7 @@ remoteActiveSpan context = do
 
 -- | Finalize a span: record its end time, fold in an error status and exception
 -- event if the action did not complete normally, and snapshot the builder into
--- an immutable 'Span'. Runs inside 'generalBracket', so it fires exactly once.
+-- an immutable 't:Span'. Runs inside 'generalBracket', so it fires exactly once.
 finalizeSpan
   :: IOE :> es
   => ActiveSpan
@@ -286,7 +286,7 @@ finalizeSpan active exitCase = do
   -- 'StrictData' that realizes every field (the attribute and event lists are
   -- reversed and so fully traversed), so a sink that stores the span (the
   -- in-memory buffer, the pretty-print accumulator) holds a finished value
-  -- rather than a thunk retaining this span's builder 'IORef' and 'ActiveSpan'.
+  -- rather than a thunk retaining this span's builder 'IORef' and 't:ActiveSpan'.
   pure $!
     Span
       { spanContext = activeContext active

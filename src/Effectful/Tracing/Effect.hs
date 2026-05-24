@@ -59,7 +59,7 @@ import Effectful.Tracing.Internal.Types
   ( Link
   , SpanContext
   , SpanKind (Internal)
-  , SpanStatus (Ok, Unset)
+  , SpanStatus (..)
   )
 
 -- | Tracing as a scoped effect. 'WithSpan' is higher-order: it runs the scoped
@@ -128,7 +128,7 @@ withSpan
   -> Eff es a
 withSpan name = withSpan' name defaultSpanArguments
 
--- | 'withSpan' with explicit 'SpanArguments'.
+-- | 'withSpan' with explicit 't:SpanArguments'.
 --
 -- > fetch :: Tracer :> es => Eff es Response
 -- > fetch = withSpan' "http.get" defaultSpanArguments { kind = Client } $ do
@@ -165,7 +165,7 @@ withLinkedRoot links action = send (WithLinkedRoot links action)
 -- continues that trace: it inherits the remote trace id and sampled flag and
 -- records the remote span as its parent. This is how an inbound request rejoins
 -- a distributed trace; pair it with 'Effectful.Tracing.Propagation.extractContext'
--- to turn @traceparent@ / @tracestate@ headers into the 'SpanContext'.
+-- to turn @traceparent@ / @tracestate@ headers into the 't:SpanContext'.
 --
 -- The remote span is not local and is never emitted: this only sets the parent
 -- for spans opened within the scope. Emit operations issued directly in the

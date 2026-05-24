@@ -36,9 +36,9 @@ import Effectful.Tracing.Effect
       )
   )
 
--- | Discharge the 'Tracer' effect by doing nothing. 'withSpan' runs its body in
+-- | Discharge the 'Tracer' effect by doing nothing. 'Effectful.Tracing.Effect.withSpan' runs its body in
 -- the current scope (no span is created), the emit operations are no-ops, and
--- 'getActiveSpan' returns 'Nothing'. Exceptions thrown inside a scoped action
+-- 'Effectful.Tracing.Effect.getActiveSpan' returns 'Nothing'. Exceptions thrown inside a scoped action
 -- propagate unchanged.
 --
 -- > runEff . runTracerNoOp $ do

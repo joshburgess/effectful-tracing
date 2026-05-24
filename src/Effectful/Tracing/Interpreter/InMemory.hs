@@ -7,7 +7,7 @@
 -- License     : BSD-3-Clause
 -- Stability   : experimental
 --
--- 'runTracerInMemory' captures every completed 'Span' into a shared buffer so
+-- 'runTracerInMemory' captures every completed 't:Span' into a shared buffer so
 -- tests can assert on what a traced computation produced. It is the workhorse
 -- for testing user code that uses 'Tracer', and the reference against which the
 -- later interpreters are tested.
@@ -31,7 +31,7 @@
 -- == Design
 --
 -- The span lifecycle (lexical active span, finalize-exactly-once under
--- 'generalBracket') is shared with the other span-opening interpreters and
+-- 'Effectful.Exception.generalBracket') is shared with the other span-opening interpreters and
 -- lives in "Effectful.Tracing.Internal.Live". This module supplies only the
 -- sink: append each completed span to a shared, write-only capture buffer.
 module Effectful.Tracing.Interpreter.InMemory
@@ -90,9 +90,9 @@ runTracerInMemory
   -> Eff es a
 runTracerInMemory = runTracerInMemoryWith alwaysOn
 
--- | Like 'runTracerInMemory', but with a caller-chosen 'Sampler'. There is no
--- export step here, so 'RecordOnly' and 'RecordAndSample' both capture the
--- span; only 'Drop' omits it.
+-- | Like 'runTracerInMemory', but with a caller-chosen 't:Sampler'. There is no
+-- export step here, so 'Effectful.Tracing.Sampler.RecordOnly' and 'Effectful.Tracing.Sampler.RecordAndSample' both capture the
+-- span; only 'Effectful.Tracing.Sampler.Drop' omits it.
 runTracerInMemoryWith
   :: IOE :> es
   => Sampler

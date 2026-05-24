@@ -54,7 +54,7 @@ data Attribute = Attribute
   }
   deriving (Eq, Show)
 
--- | Build an 'Attribute' from a key and any 'ToAttributeValue'.
+-- | Build an 't:Attribute' from a key and any 'ToAttributeValue'.
 (.=) :: (ToAttributeValue v) => Text -> v -> Attribute
 key .= value = Attribute key (toAttributeValue value)
 

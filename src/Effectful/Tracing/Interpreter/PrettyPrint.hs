@@ -36,13 +36,13 @@
 --
 -- Spans complete out of order: a parent finishes after its children, so the
 -- tree is not known until the root closes. The interpreter accumulates the
--- spans of each in-flight trace in a @'TVar' ('Map' 'TraceId' [Span])@ and
+-- spans of each in-flight trace in a @'TVar' ('Map' 't:TraceId' [Span])@ and
 -- renders the whole tree the moment the root (a span with no parent) closes,
 -- then drops that trace from the map. The lexical span model guarantees the
 -- root closes last, so by then every descendant has been collected.
 --
 -- The lifecycle itself (lexical active span, finalize-exactly-once under
--- 'generalBracket') is shared with the in-memory interpreter and lives in
+-- 'Effectful.Exception.generalBracket') is shared with the in-memory interpreter and lives in
 -- "Effectful.Tracing.Internal.Live"; this module supplies the
 -- buffer-and-render sink and the pure 'renderTrace' formatter.
 module Effectful.Tracing.Interpreter.PrettyPrint
@@ -118,7 +118,7 @@ data PrettyPrintConfig = PrettyPrintConfig
   , timeFormat :: !TimeFormat
   -- ^ How span times are shown.
   , sampler :: !Sampler
-  -- ^ Which spans to print. The \"export\" step here is printing, so 'Drop'
+  -- ^ Which spans to print. The \"export\" step here is printing, so 'Effectful.Tracing.Sampler.Drop'
   -- omits a span and both other decisions print it. 'renderTrace' ignores this
   -- field.
   }

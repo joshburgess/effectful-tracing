@@ -70,7 +70,7 @@ import Effectful.Concurrent.Async (Async, async, concurrently, forConcurrently)
 import Effectful.Tracing.Effect (Tracer, getActiveSpan, withLinkedRoot)
 import Effectful.Tracing.Internal.Types (Link (Link))
 
--- | Fork a thread whose work nests under the current span. A 'withSpan' inside
+-- | Fork a thread whose work nests under the current span. A 'Effectful.Tracing.Effect.withSpan' inside
 -- the forked action opens a child of the span that was active at the fork; with
 -- no active span it opens a root, exactly as it would in the launching thread.
 forkInstrumented
@@ -109,8 +109,8 @@ forConcurrentlyInstrumented
 forConcurrentlyInstrumented = forConcurrently
 
 -- | Fork fire-and-forget work that is __linked__ to, rather than nested under,
--- the current span. The forked action runs detached, so its first 'withSpan'
--- starts a new root trace; that root carries a 'Link' back to the span that was
+-- the current span. The forked action runs detached, so its first 'Effectful.Tracing.Effect.withSpan'
+-- starts a new root trace; that root carries a 't:Link' back to the span that was
 -- active at the fork, recording the "caused by" relationship. With no active
 -- span this is just 'forkInstrumented' (there is nothing to link to).
 --

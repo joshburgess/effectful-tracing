@@ -10,7 +10,7 @@
 -- Stability   : internal
 --
 -- Trace and span identifiers as defined by the OpenTelemetry / W3C
--- TraceContext specifications: a 'TraceId' is 16 bytes and a 'SpanId' is 8
+-- TraceContext specifications: a 't:TraceId' is 16 bytes and a 't:SpanId' is 8
 -- bytes. Identifiers render as lowercase hex, matching the wire form.
 --
 -- This is an @.Internal.@ module: it exposes the raw newtype constructors and
@@ -122,7 +122,7 @@ isValidTraceId (TraceId bs) = BS.length bs == traceIdByteLength && BS.any (/= 0)
 isValidSpanId :: SpanId -> Bool
 isValidSpanId (SpanId bs) = BS.length bs == spanIdByteLength && BS.any (/= 0) bs
 
--- | Build a 'TraceId' from raw bytes, checking only the length. Returns
+-- | Build a 't:TraceId' from raw bytes, checking only the length. Returns
 -- 'Nothing' on the wrong length. (An all-zero but correctly-sized value is
 -- accepted here; use 'isValidTraceId' to reject the invalid sentinel.)
 traceIdFromBytes :: ByteString -> Maybe TraceId
@@ -130,27 +130,27 @@ traceIdFromBytes bs
   | BS.length bs == traceIdByteLength = Just (TraceId bs)
   | otherwise = Nothing
 
--- | Build a 'SpanId' from raw bytes, checking only the length. See
+-- | Build a 't:SpanId' from raw bytes, checking only the length. See
 -- 'traceIdFromBytes'.
 spanIdFromBytes :: ByteString -> Maybe SpanId
 spanIdFromBytes bs
   | BS.length bs == spanIdByteLength = Just (SpanId bs)
   | otherwise = Nothing
 
--- | Render a 'TraceId' as 32 lowercase hex characters.
+-- | Render a 't:TraceId' as 32 lowercase hex characters.
 traceIdToHex :: TraceId -> Text
 traceIdToHex (TraceId bs) = bytesToHex bs
 
--- | Render a 'SpanId' as 16 lowercase hex characters.
+-- | Render a 't:SpanId' as 16 lowercase hex characters.
 spanIdToHex :: SpanId -> Text
 spanIdToHex (SpanId bs) = bytesToHex bs
 
--- | Parse a 'TraceId' from hex. Returns 'Nothing' unless the input is exactly
+-- | Parse a 't:TraceId' from hex. Returns 'Nothing' unless the input is exactly
 -- 32 hex characters.
 traceIdFromHex :: Text -> Maybe TraceId
 traceIdFromHex t = hexToBytes t >>= traceIdFromBytes
 
--- | Parse a 'SpanId' from hex. Returns 'Nothing' unless the input is exactly
+-- | Parse a 't:SpanId' from hex. Returns 'Nothing' unless the input is exactly
 -- 16 hex characters.
 spanIdFromHex :: Text -> Maybe SpanId
 spanIdFromHex t = hexToBytes t >>= spanIdFromBytes

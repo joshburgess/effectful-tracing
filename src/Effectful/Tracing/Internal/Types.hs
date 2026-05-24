@@ -9,7 +9,7 @@
 --
 -- The effect-system-independent data types that every interpreter shares:
 -- trace flags, trace state, span context, and the immutable record of a
--- completed 'Span'. These deliberately do not depend on @effectful@ or
+-- completed 't:Span'. These deliberately do not depend on @effectful@ or
 -- @hs-opentelemetry@; translation to OpenTelemetry happens in the bridge.
 module Effectful.Tracing.Internal.Types
   ( -- * Trace flags
@@ -77,7 +77,7 @@ setSampled False (TraceFlags w) = TraceFlags (clearBit w 0)
 newtype TraceState = TraceState [(Text, Text)]
   deriving (Eq, Show)
 
--- | The maximum number of entries a 'TraceState' may hold (32, per the W3C
+-- | The maximum number of entries a 't:TraceState' may hold (32, per the W3C
 -- spec).
 maxTraceStateEntries :: Int
 maxTraceStateEntries = 32
