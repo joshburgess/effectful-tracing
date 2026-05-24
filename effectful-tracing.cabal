@@ -148,6 +148,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.ConcurrentSpec
     Effectful.Tracing.FuzzSpec
     Effectful.Tracing.Gen
+    Effectful.Tracing.IdGenSpec
     Effectful.Tracing.IdsSpec
     Effectful.Tracing.InMemorySpec
     Effectful.Tracing.LifecycleSpec
@@ -197,6 +198,13 @@ test-suite effectful-tracing-test
       , http-client >=0.7 && <0.8
       , wai         >=3.2 && <3.3
       , warp        >=3.3 && <3.5
+
+  -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
+  -- only flips the source label so the test output names which byte source was
+  -- exercised. The crypton path itself is exercised because the linked library
+  -- was built with +secure-ids.
+  if flag(secure-ids)
+    cpp-options:     -DSECURE_IDS
 
 -- A standalone space-leak regression guard, run under a deliberately tiny
 -- maximum stack (-K1K) so a thunk-accumulation regression in the span lifecycle

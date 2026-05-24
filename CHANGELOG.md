@@ -81,6 +81,14 @@ context propagation, and the WAI / http-client instrumentation helpers.
   evaluation stack and overflow the 1K limit; the current strict lifecycle runs
   it in O(1) stack. It is kept out of the tasty suite because the property tests
   legitimately need a larger stack and so cannot share these RTS options.
+- Id generator tests (`Effectful.Tracing.IdGenSpec`): the existing id tests
+  pinned the codec and validity edges but never exercised the generators
+  themselves, so the `secure-ids` byte source went untested. These assert that a
+  freshly generated id is valid, round-trips through hex, and that a batch of
+  10,000 is collision-free. They run whichever source the library was built
+  with, so the all-flags CI job (`+secure-ids`) now covers the `crypton`
+  system-entropy path while the default build covers the splitmix PRNG; the test
+  label names which source is under test.
 - Compile-checked documentation examples: `Effectful.Tracing.CompileTest` now
   mirrors every Haskell code block in `README.md`, `docs/tutorial.md`, and
   `docs/cookbook.md` against the real API, so a renamed export or changed

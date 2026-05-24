@@ -16,6 +16,7 @@ import Effectful.Tracing.AttributeSpec qualified as AttributeSpec
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
 import Effectful.Tracing.FuzzSpec qualified as FuzzSpec
+import Effectful.Tracing.IdGenSpec qualified as IdGenSpec
 import Effectful.Tracing.IdsSpec qualified as IdsSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.LifecycleSpec qualified as LifecycleSpec
@@ -48,6 +49,7 @@ main =
           , TypesSpec.tests
           , AttributeSpec.tests
           , IdsSpec.tests
+          , IdGenSpec.tests
           , CompileTest.tests
           , NoOpSpec.tests
           , InMemorySpec.tests
