@@ -81,6 +81,14 @@ import Effectful.Tracing.Instrumentation.Database
   , databaseQuery
   , withQuerySpan
   )
+import Effectful.Tracing.Instrumentation.Messaging
+  ( MessagingOperation (messagingDestination)
+  , MessagingOperationType (Process, Send)
+  , injectMessageHeaders
+  , messagingOperation
+  , withConsumerSpan
+  , withMessagingSpan
+  )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
 import Effectful.Tracing.Propagation.Composite
@@ -230,6 +238,8 @@ docExamples :: ()
 docExamples =
   (cbLoadUser :: UserId -> Eff '[Database, Tracer] User)
     `seq` (cbHandleOrder :: Order -> Eff '[Tracer] ())
+    `seq` (cbPublishOrder :: Eff '[Tracer] [(Text, Text)])
+    `seq` (cbConsumeOrder :: [(Text, Text)] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` samplerName cbPriorityOr1Percent
     `seq` (cbRiskyCharge :: Eff '[Tracer] ())
     `seq` (cbPrioritySampledRun :: Eff '[Tracer, IOE] () -> IO [Span])
@@ -324,6 +334,18 @@ cbHandleOrder order = withSpan "handleOrder" $ do
     , "order.line_count" .= lineCount order
     ]
   addEvent "payment.authorized" ["gateway" .= ("stripe" :: Text)]
+
+-- cookbook: "Trace a message producer and consumer" (producer)
+cbPublishOrder :: (Tracer :> es) => Eff es [(Text, Text)]
+cbPublishOrder =
+  withMessagingSpan
+    (messagingOperation "kafka" Send) {messagingDestination = Just "orders"}
+    injectMessageHeaders
+
+-- cookbook: "Trace a message producer and consumer" (consumer)
+cbConsumeOrder :: (Tracer :> es) => [(Text, Text)] -> Eff es a -> Eff es a
+cbConsumeOrder headers =
+  withConsumerSpan headers (messagingOperation "kafka" Process) {messagingDestination = Just "orders"}
 
 -- cookbook: "Sample but keep what matters" (custom sampler)
 cbPriorityOr1Percent :: Sampler

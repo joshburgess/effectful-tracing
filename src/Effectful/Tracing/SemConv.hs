@@ -24,7 +24,8 @@
 --
 -- The naming follows the convention namespaces: @http.*@ for protocol-level
 -- request and response attributes, @url.*@ for the parts of the request URL,
--- @network.*@ for transport details, @db.*@ for database client calls, and
+-- @network.*@ for transport details, @db.*@ for database client calls,
+-- @messaging.*@ for message producer \/ consumer operations, and
 -- @exception.*@ for recorded errors.
 module Effectful.Tracing.SemConv
   ( -- * HTTP attributes
@@ -48,6 +49,17 @@ module Effectful.Tracing.SemConv
   , dbCollectionName
   , dbNamespace
   , dbOperationBatchSize
+
+    -- * Messaging attributes
+  , messagingSystem
+  , messagingOperationType
+  , messagingOperationName
+  , messagingDestinationName
+  , messagingDestinationTemplate
+  , messagingMessageId
+  , messagingMessageConversationId
+  , messagingMessageBodySize
+  , messagingBatchMessageCount
 
     -- * Exception attributes
   , exceptionType
@@ -134,6 +146,53 @@ dbNamespace = "db.namespace"
 -- example the number of parameter rows passed to a multi-row @executeMany@.
 dbOperationBatchSize :: Text
 dbOperationBatchSize = "db.operation.batch.size"
+
+-- | @messaging.system@: the messaging system, for example @\"kafka\"@,
+-- @\"rabbitmq\"@, or @\"aws_sqs\"@.
+messagingSystem :: Text
+messagingSystem = "messaging.system"
+
+-- | @messaging.operation.type@: the kind of operation, one of @\"create\"@,
+-- @\"send\"@, @\"receive\"@, @\"process\"@, or @\"settle\"@. This is the
+-- low-cardinality category that also selects the span kind (producer for
+-- @send@ \/ @create@, consumer for @receive@ \/ @process@).
+messagingOperationType :: Text
+messagingOperationType = "messaging.operation.type"
+
+-- | @messaging.operation.name@: the system-specific name of the operation, for
+-- example @\"publish\"@, @\"ack\"@, or @\"receive\"@. Lower cardinality than the
+-- destination, used as the leading word of the span name.
+messagingOperationName :: Text
+messagingOperationName = "messaging.operation.name"
+
+-- | @messaging.destination.name@: the message destination, for example a topic
+-- or queue name like @\"orders\"@.
+messagingDestinationName :: Text
+messagingDestinationName = "messaging.destination.name"
+
+-- | @messaging.destination.template@: the low-cardinality template a destination
+-- is derived from, for example @\"/users/{id}/notifications\"@. Prefer this over
+-- 'messagingDestinationName' in the span name when destinations are dynamic.
+messagingDestinationTemplate :: Text
+messagingDestinationTemplate = "messaging.destination.template"
+
+-- | @messaging.message.id@: the broker-assigned identifier of a single message.
+messagingMessageId :: Text
+messagingMessageId = "messaging.message.id"
+
+-- | @messaging.message.conversation_id@: the conversation (or correlation)
+-- identifier tying related messages together.
+messagingMessageConversationId :: Text
+messagingMessageConversationId = "messaging.message.conversation_id"
+
+-- | @messaging.message.body.size@: the size of the message body in bytes.
+messagingMessageBodySize :: Text
+messagingMessageBodySize = "messaging.message.body.size"
+
+-- | @messaging.batch.message_count@: the number of messages in a batch
+-- operation.
+messagingBatchMessageCount :: Text
+messagingBatchMessageCount = "messaging.batch.message_count"
 
 -- | @exception.type@: the type or class of an exception, for example
 -- @\"IOException\"@.

@@ -132,6 +132,7 @@ library
     Effectful.Tracing.Effect
     Effectful.Tracing.EnvConfig
     Effectful.Tracing.Instrumentation.Database
+    Effectful.Tracing.Instrumentation.Messaging
     Effectful.Tracing.Log
     Effectful.Tracing.Interpreter.InMemory
     Effectful.Tracing.Interpreter.NoOp
@@ -225,6 +226,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.IdsSpec
     Effectful.Tracing.InMemorySpec
     Effectful.Tracing.Instrumentation.DatabaseSpec
+    Effectful.Tracing.Instrumentation.MessagingSpec
     Effectful.Tracing.LifecycleSpec
     Effectful.Tracing.LogSpec
     Effectful.Tracing.NoOpSpec

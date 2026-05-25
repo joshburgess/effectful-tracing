@@ -291,6 +291,20 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `db.operation.batch.size`. The flag pulls in `valiant` and `valiant-effectful`
   (both pure Haskell, no libpq), so it is built in the all-flags CI jobs; the
   binding is covered by a flag-gated compile mirror.
+- `Effectful.Tracing.Instrumentation.Messaging`, a framework-agnostic core for
+  tracing message producers and consumers, built unconditionally (no cabal flag,
+  no extra dependencies) alongside the database core. You describe a call with a
+  `MessagingOperation` (system, operation type, destination, and the optional
+  `messaging.*` fields) and run it inside `withMessagingSpan`, which records the
+  stable OpenTelemetry messaging conventions and picks the span kind from the
+  operation type: `producer` for `Send` / `Create`, `consumer` for `Receive` /
+  `Process`, `client` for `Settle`. Context crosses the broker through message
+  headers: `injectMessageHeaders` serializes the active span as plain text
+  `traceparent` / `tracestate` pairs for the producer to attach, and
+  `withConsumerSpan` (or `extractMessageHeaders` on its own) continues that trace
+  as a remote parent on the consumer side. The span is named `{operation}
+  {destination}` for low cardinality. Adds the `messaging.*` keys to
+  `Effectful.Tracing.SemConv`; covered by `MessagingSpec` and a compile mirror.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

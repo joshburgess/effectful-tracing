@@ -259,6 +259,59 @@ activeUsers :: (Valiant :> es, Tracer :> es) => Statement () User -> Eff es [Use
 activeUsers listUsers = V.fetchAllEff listUsers ()
 ```
 
+## Trace a message producer and consumer
+
+Message queues split one logical operation across two processes, so the trace
+has to travel with the message. `Effectful.Tracing.Instrumentation.Messaging` is
+broker-agnostic: you describe the call with a `MessagingOperation` and run it
+inside `withMessagingSpan`, which records the stable OpenTelemetry messaging
+conventions (`messaging.system`, `messaging.destination.name`, and friends) and
+picks the span kind from the operation type, `producer` for `Send` / `Create`
+and `consumer` for `Receive` / `Process`.
+
+On the producer side, open a `Send` span and attach the trace context to the
+message with `injectMessageHeaders`, which returns plain text `traceparent` /
+`tracestate` pairs (the portable shape across Kafka, RabbitMQ, SQS, and the
+like).
+
+```haskell
+import Control.Monad.IO.Class (liftIO)
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.Messaging
+  (MessagingOperation (..), MessagingOperationType (Send), injectMessageHeaders, messagingOperation, withMessagingSpan)
+
+-- 'produce' stands in for your broker client's publish call.
+publishOrder :: (IOE :> es, Tracer :> es) => Order -> Eff es ()
+publishOrder order =
+  withMessagingSpan
+    (messagingOperation "kafka" Send) { messagingDestination = Just "orders" }
+    $ do
+      headers <- injectMessageHeaders
+      liftIO (produce "orders" headers (encode order))
+```
+
+On the consumer side, hand the received message's headers to `withConsumerSpan`
+along with a `Process` (or `Receive`) operation. When the headers carry a valid
+context the consumer span continues the producer's trace as a remote child;
+otherwise it opens a fresh root. (`extractMessageHeaders` exposes the parse on its
+own if you want to continue the parent around more than one span.)
+
+```haskell
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.Messaging
+  (MessagingOperation (..), MessagingOperationType (Process), messagingOperation, withConsumerSpan)
+
+-- 'message' stands in for your broker client's received message.
+handleOrder :: (IOE :> es, Tracer :> es) => Message -> Eff es ()
+handleOrder message =
+  withConsumerSpan
+    (messageHeaders message)
+    (messagingOperation "kafka" Process) { messagingDestination = Just "orders" }
+    (liftIO (process (messageBody message)))
+```
+
 ## Interoperate with B3 (Zipkin) headers
 
 When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,
