@@ -311,6 +311,42 @@ OpenTelemetry's `OTEL_PROPAGATORS` variable uses for it (`tracecontext`, `b3`,
 resolve a token to its propagator, which is how environment-variable
 configuration selects them.
 
+## Configure tracing from OTEL_ environment variables
+
+OpenTelemetry defines a set of `OTEL_`-prefixed environment variables so an
+operator can configure a service's tracing without a code change.
+`Effectful.Tracing.EnvConfig` reads the subset that maps onto this library's
+surface (service name, resource attributes, propagators, sampler) and hands back
+an `EnvConfig` you wire into your interpreter at startup.
+
+```haskell
+import Effectful.Tracing.EnvConfig (EnvConfig (..), readEnvConfig)
+
+main :: IO ()
+main = do
+  env <- readEnvConfig
+  -- env has resolved fields you feed into your setup:
+  --   serviceName env             :: Maybe Text
+  --   resourceAttributes env      :: [Attribute]
+  --   traceContextPropagators env :: [TraceContextPropagator]
+  --   baggagePropagators env      :: [BaggagePropagator]
+  --   tracesSampler env           :: Sampler
+  -- ... build your OtelConfig with (tracesSampler env), continue/forward with
+  -- the propagator lists (see "Combine several propagators"), and seed your
+  -- resource with (serviceName env) and (resourceAttributes env).
+  pure ()
+```
+
+The parse is pure: `parseEnvConfig` takes a variable-lookup function, so every
+case is testable without touching the process environment, and `readEnvConfig`
+is the thin `IO` wrapper over the real environment. `OTEL_PROPAGATORS` reuses the
+token names from the composite propagator (`tracecontext`, `baggage`, `b3`,
+`b3multi`, `jaeger`, `none`); `OTEL_TRACES_SAMPLER` understands `always_on`,
+`always_off`, `traceidratio` (with `OTEL_TRACES_SAMPLER_ARG`), and the
+`parentbased_` variants. Unset variables fall back to the OpenTelemetry defaults
+(propagators `tracecontext,baggage`, sampler `parentbased_always_on`), and an
+unrecognised token degrades to that default rather than failing at startup.
+
 ## Carry application context as baggage
 
 When you want a value to ride along with the trace and be readable by every

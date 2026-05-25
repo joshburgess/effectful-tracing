@@ -247,6 +247,17 @@ context propagation, and the WAI / http-client instrumentation helpers.
   additive). Each propagator carries its `OTEL_PROPAGATORS` token name, and
   `traceContextByToken` / `baggageByToken` resolve a token to its propagator. Pure,
   works under every interpreter, no new dependency, no cabal flag.
+- `Effectful.Tracing.EnvConfig`, which reads the `OTEL_`-prefixed SDK environment
+  variables that map onto the library's surface and returns a resolved `EnvConfig`
+  (service name, resource attributes, the trace-context and baggage propagator
+  lists, and a sampler) to wire into your interpreter at startup. It reads
+  `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` (W3C Baggage octet format, decoded
+  through the baggage parser), `OTEL_PROPAGATORS` (resolved through the composite
+  propagator's token table, with `none` and unknown-token handling), and
+  `OTEL_TRACES_SAMPLER` / `OTEL_TRACES_SAMPLER_ARG`. The parse is pure
+  (`parseEnvConfig` takes a lookup function); `readEnvConfig` is the `IO` wrapper
+  over the real environment. Unset or unrecognised values fall back to the
+  OpenTelemetry defaults rather than failing. No new dependency, no cabal flag.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

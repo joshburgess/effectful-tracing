@@ -64,6 +64,10 @@ import Effectful.Tracing
   , (.=)
   )
 import Effectful.Tracing.Attribute (Attribute (Attribute), AttributeValue (AttrBool, AttrInt))
+import Effectful.Tracing.EnvConfig
+  ( EnvConfig (resourceAttributes, serviceName, traceContextPropagators, tracesSampler)
+  , readEnvConfig
+  )
 import Effectful.Tracing.Baggage
   ( BaggageContext
   , getBaggage
@@ -221,6 +225,7 @@ docExamples =
     `seq` (cbCompositeForward :: Eff '[Tracer] [Header])
     `seq` (cbCompositeServe :: [Header] -> Eff '[BaggageContext] () -> Eff '[] ())
     `seq` (cbCompositeBaggageForward :: Eff '[BaggageContext] [Header])
+    `seq` (cbEnvConfigMain :: IO ())
     `seq` (cbServeWithBaggage :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
     `seq` (cbPriorityOf :: Eff '[BaggageContext] (Maybe Text))
     `seq` (cbHandleBaggage :: Eff '[BaggageContext, Tracer] [Header])
@@ -375,6 +380,16 @@ cbCompositeBaggageForward = injectBaggageAll cbBaggagePropagators
 -- cookbook: "Combine several propagators" (the configured baggage list)
 cbBaggagePropagators :: [BaggagePropagator]
 cbBaggagePropagators = [w3cBaggage, jaegerBaggage]
+
+-- cookbook: "Configure tracing from OTEL_ environment variables"
+cbEnvConfigMain :: IO ()
+cbEnvConfigMain = do
+  env <- readEnvConfig
+  let _name = serviceName env
+      _attrs = resourceAttributes env
+      _propagators = traceContextPropagators env
+      _sampler = tracesSampler env
+  pure ()
 
 -- cookbook: "Stamp logs with the active trace and span"
 cbLogEvent :: Tracer :> es => (Text -> [(Text, Text)] -> Eff es ()) -> Text -> Eff es ()

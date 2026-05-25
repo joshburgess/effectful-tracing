@@ -112,6 +112,7 @@ library
     Effectful.Tracing.Baggage
     Effectful.Tracing.Concurrent
     Effectful.Tracing.Effect
+    Effectful.Tracing.EnvConfig
     Effectful.Tracing.Instrumentation.Database
     Effectful.Tracing.Log
     Effectful.Tracing.Interpreter.InMemory
@@ -188,6 +189,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.BaggageSpec
     Effectful.Tracing.CompileTest
     Effectful.Tracing.ConcurrentSpec
+    Effectful.Tracing.EnvConfigSpec
     Effectful.Tracing.FuzzSpec
     Effectful.Tracing.Gen
     Effectful.Tracing.IdGenSpec

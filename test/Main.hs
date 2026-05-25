@@ -16,6 +16,7 @@ import Effectful.Tracing.AttributeSpec qualified as AttributeSpec
 import Effectful.Tracing.BaggageSpec qualified as BaggageSpec
 import Effectful.Tracing.CompileTest qualified as CompileTest
 import Effectful.Tracing.ConcurrentSpec qualified as ConcurrentSpec
+import Effectful.Tracing.EnvConfigSpec qualified as EnvConfigSpec
 import Effectful.Tracing.FuzzSpec qualified as FuzzSpec
 import Effectful.Tracing.IdGenSpec qualified as IdGenSpec
 import Effectful.Tracing.IdsSpec qualified as IdsSpec
@@ -74,6 +75,7 @@ main =
           , TestingSpec.tests
           , ConcurrentSpec.tests
           , PropagationSpec.tests
+          , EnvConfigSpec.tests
           , B3Spec.tests
           , CompositeSpec.tests
           , JaegerSpec.tests
