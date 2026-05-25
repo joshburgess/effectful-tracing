@@ -73,6 +73,7 @@ import Effectful.Tracing.Baggage
   )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
+import Effectful.Tracing.Log (activeCorrelationFields)
 import Effectful.Tracing.Propagation.Jaeger
   ( extractBaggageJaeger
   , extractContextJaeger
@@ -190,6 +191,8 @@ docExamples =
     `seq` (cbPriorityOf :: Eff '[BaggageContext] (Maybe Text))
     `seq` (cbHandleBaggage :: Eff '[BaggageContext, Tracer] [Header])
     `seq` (cbCheckHandlerTrace :: IO ())
+    `seq` (cbLogEvent :: (Text -> [(Text, Text)] -> Eff '[Tracer] ()) -> Text -> Eff '[Tracer] ())
+    `seq` (cbHandleRequest :: (Text -> [(Text, Text)] -> Eff '[Tracer] ()) -> Eff '[Tracer] ())
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
     `seq` (cbPrettyRun :: Eff '[Tracer, IOE] () -> IO ())
@@ -309,6 +312,15 @@ cbJaegerConsume headers =
 -- cookbook: "Interoperate with Jaeger (uber-trace-id) headers" (forward uber-trace-id)
 cbJaegerForward :: Tracer :> es => Eff es [Header]
 cbJaegerForward = injectContextJaeger
+
+-- cookbook: "Stamp logs with the active trace and span"
+cbLogEvent :: Tracer :> es => (Text -> [(Text, Text)] -> Eff es ()) -> Text -> Eff es ()
+cbLogEvent emit message = do
+  fields <- activeCorrelationFields
+  emit message fields
+
+cbHandleRequest :: Tracer :> es => (Text -> [(Text, Text)] -> Eff es ()) -> Eff es ()
+cbHandleRequest emit = withSpan "handle" $ cbLogEvent emit "handling request"
 
 -- cookbook: "Carry application context as baggage" (seed inbound baggage)
 cbServeWithBaggage :: [Header] -> Eff (BaggageContext : es) a -> Eff es a

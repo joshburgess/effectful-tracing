@@ -367,6 +367,37 @@ checkHandlerTrace = do
     _ -> assertBool "both spans were captured" False
 ```
 
+## Stamp logs with the active trace and span
+
+To join your logs to your traces, stamp every log line with the trace and span
+id that was active when it was written. `Effectful.Tracing.Log` reads the active
+span and hands you the OpenTelemetry log-correlation fields (`trace_id`,
+`span_id`, `trace_flags`) as plain key-value pairs, so they drop into any logger
+(`co-log`, `katip`, `fast-logger`, or a bare handle) without a new dependency.
+
+```haskell
+import Data.Text (Text)
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer, withSpan)
+import Effectful.Tracing.Log (activeCorrelationFields)
+
+-- A structured log call that carries trace context when a span is active, and
+-- degrades to no extra fields when one is not (a startup line, say).
+logEvent :: (Tracer :> es) => (Text -> [(Text, Text)] -> Eff es ()) -> Text -> Eff es ()
+logEvent emit message = do
+  fields <- activeCorrelationFields
+  emit message fields
+
+handleRequest :: (Tracer :> es) => (Text -> [(Text, Text)] -> Eff es ()) -> Eff es ()
+handleRequest emit = withSpan "handle" $
+  logEvent emit "handling request"   -- log line now carries trace_id and span_id
+```
+
+`activeCorrelation` returns the same data as a `Correlation` record if you want
+the ids individually (`correlationTraceId`, `correlationSpanId`), and
+`activeTraceId` / `activeSpanId` return just one. All of them return the empty /
+`Nothing` case when no span is in scope, so callers never have to special-case it.
+
 ## Customize the pretty-printed output
 
 `defaultPrettyPrintConfig` shows attributes and events, no color, and durations

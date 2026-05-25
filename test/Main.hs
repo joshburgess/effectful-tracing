@@ -21,6 +21,7 @@ import Effectful.Tracing.IdGenSpec qualified as IdGenSpec
 import Effectful.Tracing.IdsSpec qualified as IdsSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
 import Effectful.Tracing.LifecycleSpec qualified as LifecycleSpec
+import Effectful.Tracing.LogSpec qualified as LogSpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
 import Effectful.Tracing.PrettyPrintLeakSpec qualified as PrettyPrintLeakSpec
 import Effectful.Tracing.PrettyPrintSpec qualified as PrettyPrintSpec
@@ -59,6 +60,7 @@ main =
           , NoOpSpec.tests
           , InMemorySpec.tests
           , LifecycleSpec.tests
+          , LogSpec.tests
           , PrettyPrintSpec.tests
           , PrettyPrintLeakSpec.tests
           , SamplerSpec.tests

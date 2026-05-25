@@ -94,6 +94,7 @@ library
     Effectful.Tracing.Baggage
     Effectful.Tracing.Concurrent
     Effectful.Tracing.Effect
+    Effectful.Tracing.Log
     Effectful.Tracing.Interpreter.InMemory
     Effectful.Tracing.Interpreter.NoOp
     Effectful.Tracing.Interpreter.PrettyPrint
@@ -160,6 +161,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.IdsSpec
     Effectful.Tracing.InMemorySpec
     Effectful.Tracing.LifecycleSpec
+    Effectful.Tracing.LogSpec
     Effectful.Tracing.NoOpSpec
     Effectful.Tracing.PrettyPrintLeakSpec
     Effectful.Tracing.PrettyPrintSpec

@@ -245,6 +245,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `hasAttributeValue`, `hasStatus`, `lookupEvent` / `hasEvent`, and `hasKind`. The
   matchers are plain `Bool` / `Maybe` with no test-framework dependency, so they
   compose with `tasty-hunit`, `hspec`, `hedgehog`, or anything else.
+- `Effectful.Tracing.Log`, for correlating log lines with the active trace. It
+  reads the active span through the `Tracer` effect and exposes its identifiers
+  both as a `Correlation` record and as the flat OpenTelemetry log fields
+  (`trace_id`, `span_id`, `trace_flags`) via `activeCorrelationFields`, plus
+  `activeTraceId` / `activeSpanId` for one id at a time. Framework-agnostic like
+  `Effectful.Tracing.Testing`: the accessors return plain `Text` /
+  `[(Text, Text)]` with no logging-library dependency and no cabal flag, so they
+  drop into `co-log`, `katip`, `fast-logger`, or a bare handle identically, and
+  return the empty / `Nothing` case cleanly when no span is in scope.
 - W3C Baggage propagation: `Effectful.Tracing.Baggage` adds ambient, key-value
   context that rides alongside a trace but is independent of span attributes. A
   dynamic `BaggageContext` effect carries it the same way the active span is
