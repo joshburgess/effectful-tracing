@@ -38,6 +38,9 @@ module Effectful.Tracing.Instrumentation.Wai
 
     -- * Span naming
   , defaultSpanName
+
+    -- * Building blocks
+  , requestAttributes
   ) where
 
 import Control.Monad (when)

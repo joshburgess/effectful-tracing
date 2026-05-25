@@ -259,6 +259,19 @@ context propagation, and the WAI / http-client instrumentation helpers.
   for naming a server span with its matched route template, which is only known
   once routing has run; like the other annotating operations it is a no-op when no
   span is active.
+- Servant server instrumentation behind a new `servant` cabal flag (off by
+  default). `Effectful.Tracing.Instrumentation.Servant` adds a `WithSpanName`
+  type-level combinator to annotate each endpoint with its route template, and a
+  `traceServantMiddleware` that does everything the WAI middleware does and, once
+  the router has matched an annotated endpoint, renames the open server span to
+  `{method} {route}` and records the template as `http.route` (the low-cardinality
+  naming the HTTP conventions recommend). The combinator is transparent to
+  handlers (it does not change `ServerT`); it communicates the matched route to
+  the WAI boundary through a request-vault slot, applied with the new `updateName`
+  operation. The flag pulls in `servant`, `servant-server`, and `vault`, and
+  builds the WAI middleware it sits on, so it is exercised in the all-flags CI
+  jobs. The middleware is tested by serving a small API through the in-memory
+  interpreter.
 - Database instrumentation. `Effectful.Tracing.Instrumentation.Database` is a
   framework-agnostic core (always built, no new dependency): describe a call with
   a `DatabaseQuery` and run it inside `withQuerySpan`, which opens a `client`-kind

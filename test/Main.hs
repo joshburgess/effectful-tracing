@@ -47,6 +47,10 @@ import Effectful.Tracing.Instrumentation.WaiSpec qualified as WaiSpec
 import Effectful.Tracing.Instrumentation.HttpClientSpec qualified as HttpClientSpec
 #endif
 
+#ifdef SERVANT
+import Effectful.Tracing.Instrumentation.ServantSpec qualified as ServantSpec
+#endif
+
 main :: IO ()
 main =
   defaultMain
@@ -79,6 +83,7 @@ main =
             <> otelTests
             <> waiTests
             <> httpClientTests
+            <> servantTests
         )
     )
 
@@ -104,4 +109,12 @@ httpClientTests :: [TestTree]
 httpClientTests = [HttpClientSpec.tests]
 #else
 httpClientTests = []
+#endif
+
+-- | The Servant middleware tests, present only when built with @+servant@.
+servantTests :: [TestTree]
+#ifdef SERVANT
+servantTests = [ServantSpec.tests]
+#else
+servantTests = []
 #endif

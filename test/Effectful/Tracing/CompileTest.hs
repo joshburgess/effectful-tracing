@@ -130,6 +130,14 @@ import Database.PostgreSQL.Simple (Connection, Only (..))
 import Effectful.Tracing.Instrumentation.PostgresqlSimple qualified as Pg
 #endif
 
+#ifdef SERVANT
+import Data.Proxy (Proxy (Proxy))
+import Network.Wai (Application)
+import Servant (Capture, Get, PlainText, Server, serve, type (:<|>) ((:<|>)))
+import Servant qualified as Sv
+import Effectful.Tracing.Instrumentation.Servant (WithSpanName, traceServantMiddleware)
+#endif
+
 #ifdef OTEL
 import Effectful.Tracing.Interpreter.OpenTelemetry (OtelConfig (..), runTracerOTel)
 #endif
@@ -218,6 +226,7 @@ docExamples =
     `seq` waiExamples
     `seq` httpClientExamples
     `seq` postgresqlSimpleExamples
+    `seq` servantExamples
     `seq` otelExamples
     `seq` ()
 
@@ -520,6 +529,35 @@ cbActiveUserNames conn =
   Pg.query conn "SELECT name FROM users WHERE active = ?" (Only True)
 #else
 postgresqlSimpleExamples = ()
+#endif
+
+-- servant examples (only when built with +servant).
+servantExamples :: ()
+#ifdef SERVANT
+servantExamples =
+  (servantServer :: Server ServantApi)
+    `seq` (servantWrap stubRunInIOS (serve (Proxy :: Proxy ServantApi) servantServer) :: Application)
+    `seq` ()
+  where
+    stubRunInIOS :: Eff '[IOE, Tracer] a -> IO a
+    stubRunInIOS = error "compile-only: doc mirror is never run"
+
+-- cookbook: name server spans from the matched route with Servant
+type ServantApi =
+  WithSpanName "/users/{id}" Sv.:> "users" Sv.:> Capture "id" Int Sv.:> Get '[PlainText] Text
+    :<|> WithSpanName "/health" Sv.:> "health" Sv.:> Get '[PlainText] Text
+
+servantServer :: Server ServantApi
+servantServer = (\_ -> pure "user") :<|> pure "ok"
+
+servantWrap
+  :: (IOE :> es, Tracer :> es)
+  => (forall a. Eff es a -> IO a)
+  -> Application
+  -> Application
+servantWrap runInIO app = traceServantMiddleware runInIO app
+#else
+servantExamples = ()
 #endif
 
 -- OpenTelemetry export example (only when built with +otel). The exporter and

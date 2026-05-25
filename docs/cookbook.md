@@ -335,6 +335,29 @@ nameByRoute req =
 -- Then wrap your app with `traceMiddlewareWith nameByRoute runInIO app`.
 ```
 
+With Servant you do not have to extract the route by hand. The
+`servant` flag builds `Effectful.Tracing.Instrumentation.Servant`, which gives you
+a `WithSpanName` combinator to annotate each endpoint with its route template and
+a `traceServantMiddleware` that renames the server span to `"{method} {route}"`
+and records `http.route` once routing has run.
+
+```haskell
+import Data.Proxy (Proxy (Proxy))
+import Data.Text (Text)
+import Effectful.Tracing.Instrumentation.Servant (WithSpanName, traceServantMiddleware)
+import Servant
+
+type API =
+  WithSpanName "/users/{id}" :> "users" :> Capture "id" Int :> Get '[PlainText] Text
+    :<|> WithSpanName "/health" :> "health" :> Get '[PlainText] Text
+
+-- The combinator is transparent to handlers, so the server is written as usual.
+apiServer :: Server API
+apiServer = (\uid -> pure (renderUser uid)) :<|> pure "ok"
+
+-- Then wrap the served app: `traceServantMiddleware runInIO (serve (Proxy :: Proxy API) apiServer)`.
+```
+
 ## Instrument a long-running worker
 
 A worker that loops forever should not open one giant span for its whole

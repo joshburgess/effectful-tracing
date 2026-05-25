@@ -82,7 +82,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpq-dev
 
       - name: Configure
-        run: cabal configure --enable-tests --flags="otel wai http-client secure-ids postgresql-simple"
+        run: cabal configure --enable-tests --flags="otel wai http-client secure-ids postgresql-simple servant"
 
       - name: Cache cabal store
         uses: actions/cache@v4
@@ -93,10 +93,10 @@ jobs:
             ${{ runner.os }}-ghc9.10.3-flags-
 
       - name: Build (all flags)
-        run: cabal build all --flags="otel wai http-client secure-ids postgresql-simple"
+        run: cabal build all --flags="otel wai http-client secure-ids postgresql-simple servant"
 
       - name: Test (all flags)
-        run: cabal test all --flags="otel wai http-client secure-ids postgresql-simple" --test-show-details=direct
+        run: cabal test all --flags="otel wai http-client secure-ids postgresql-simple servant" --test-show-details=direct
 
   haddock:
     name: haddock (GHC 9.10.3)
@@ -130,7 +130,7 @@ jobs:
       - name: Build Haddock (fail on broken doc-links or <100% coverage)
         run: |
           set -o pipefail
-          cabal haddock all --flags="otel wai http-client secure-ids postgresql-simple" 2>&1 | tee haddock.log
+          cabal haddock all --flags="otel wai http-client secure-ids postgresql-simple servant" 2>&1 | tee haddock.log
           if grep -q "could not find link destination" haddock.log; then
             echo "::error::Haddock reported broken doc-links (see log above)"
             exit 1
@@ -311,7 +311,7 @@ jobs:
           tar -xzf "$tarball" -C "$workdir"
           srcdir=$(find "$workdir" -maxdepth 1 -type d -name 'effectful-tracing-*')
           cd "$srcdir"
-          cabal build all --enable-tests --flags="otel wai http-client secure-ids postgresql-simple"
+          cabal build all --enable-tests --flags="otel wai http-client secure-ids postgresql-simple servant"
 
   hlint:
     name: hlint
