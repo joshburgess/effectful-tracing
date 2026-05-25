@@ -237,6 +237,28 @@ activeUserNames conn =
   Sqlite.query conn "SELECT name FROM users WHERE active = ?" (Only True)
 ```
 
+For [`valiant`](https://hackage.haskell.org/package/valiant) (the compile-time
+checked PostgreSQL library), the `valiant` cabal flag builds
+`Effectful.Tracing.Instrumentation.Valiant`. It wraps the statement runners from
+the [`valiant-effectful`](https://hackage.haskell.org/package/valiant-effectful)
+adapter (`fetchOneEff`, `fetchAllEff`, `executeEff`, `executeBatchEff`, and the
+rest), so each runs inside a `client`-kind span. The runners require only
+`Valiant :> es` and `Tracer :> es`, no `IOE`, because the `Valiant` effect
+already carries the connection. `db.query.text` comes from the statement's own
+validated SQL (never interpolated values) and `db.operation.name` from its
+leading keyword. The system name is `postgresql`.
+
+```haskell
+import Valiant (Statement)
+import Valiant.Effectful (Valiant)
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.Valiant qualified as V
+
+activeUsers :: (Valiant :> es, Tracer :> es) => Statement () User -> Eff es [User]
+activeUsers listUsers = V.fetchAllEff listUsers ()
+```
+
 ## Interoperate with B3 (Zipkin) headers
 
 When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,

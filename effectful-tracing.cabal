@@ -77,6 +77,15 @@ flag sqlite-simple
   default:     False
   manual:      True
 
+flag valiant
+  description:
+    Build the @valiant@ tracing wrappers
+    (@Effectful.Tracing.Instrumentation.Valiant@) over the @valiant-effectful@
+    adapter. Off by default so the base package does not depend on @valiant@ /
+    @valiant-effectful@.
+  default:     False
+  manual:      True
+
 flag servant
   description:
     Build the Servant route-aware tracing middleware
@@ -187,6 +196,12 @@ library
     exposed-modules: Effectful.Tracing.Instrumentation.SqliteSimple
     build-depends:   sqlite-simple >=0.4 && <0.5
 
+  if flag(valiant)
+    exposed-modules: Effectful.Tracing.Instrumentation.Valiant
+    build-depends:
+      , valiant           >=0.1 && <0.2
+      , valiant-effectful >=0.1 && <0.2
+
   if flag(secure-ids)
     cpp-options:   -DSECURE_IDS
     build-depends: crypton >=1.0 && <1.2
@@ -282,6 +297,12 @@ test-suite effectful-tracing-test
   if flag(sqlite-simple)
     cpp-options:   -DSQLITE_SIMPLE
     build-depends: sqlite-simple >=0.4 && <0.5
+
+  if flag(valiant)
+    cpp-options:   -DVALIANT
+    build-depends:
+      , valiant           >=0.1 && <0.2
+      , valiant-effectful >=0.1 && <0.2
 
   -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
   -- only flips the source label so the test output names which byte source was

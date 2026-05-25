@@ -278,6 +278,19 @@ context propagation, and the WAI / http-client instrumentation helpers.
   new `Effectful.Tracing.SemConv` constant). The flag pulls in `sqlite-simple`
   (and its bundled SQLite C sources), so it is built in the all-flags CI jobs;
   the binding is covered by a flag-gated compile mirror.
+- `valiant` database binding. The new `valiant` cabal flag (off by default)
+  builds `Effectful.Tracing.Instrumentation.Valiant`, which wraps the statement
+  runners from the `valiant-effectful` adapter for
+  [`valiant`](https://hackage.haskell.org/package/valiant), the compile-time
+  checked PostgreSQL library: `fetchOneEff`, `fetchAllEff`, `fetchScalarEff`,
+  `fetchOneOrThrowEff`, `fetchExistsEff`, `executeEff`, `executeReturningEff`,
+  and `executeBatchEff`, each running inside a `client`-kind span (system name
+  `postgresql`). The runners need only `Valiant :> es` and `Tracer :> es` (no
+  `IOE`); `db.query.text` comes from the statement's validated SQL and
+  `db.operation.name` from its leading keyword, and `executeBatchEff` records
+  `db.operation.batch.size`. The flag pulls in `valiant` and `valiant-effectful`
+  (both pure Haskell, no libpq), so it is built in the all-flags CI jobs; the
+  binding is covered by a flag-gated compile mirror.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

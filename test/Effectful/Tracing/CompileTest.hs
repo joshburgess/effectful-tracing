@@ -156,6 +156,13 @@ import Database.SQLite.Simple qualified as SqliteDb
 import Effectful.Tracing.Instrumentation.SqliteSimple qualified as Sqlite
 #endif
 
+#ifdef VALIANT
+import Data.Int (Int64)
+import Valiant (Statement, mkStatement)
+import Valiant.Effectful (Valiant)
+import Effectful.Tracing.Instrumentation.Valiant qualified as ValiantT
+#endif
+
 #ifdef SERVANT
 import Data.Proxy (Proxy (Proxy))
 import Network.Wai (Application)
@@ -259,6 +266,7 @@ docExamples =
     `seq` httpClientExamples
     `seq` postgresqlSimpleExamples
     `seq` sqliteSimpleExamples
+    `seq` valiantExamples
     `seq` servantExamples
     `seq` otelExamples
     `seq` ()
@@ -627,6 +635,34 @@ cbSqliteSeedUsers conn =
   Sqlite.executeMany conn "INSERT INTO users (name) VALUES (?)" [SqliteDb.Only ("a" :: Text), SqliteDb.Only "b"]
 #else
 sqliteSimpleExamples = ()
+#endif
+
+-- valiant examples (only when built with +valiant).
+valiantExamples :: ()
+#ifdef VALIANT
+valiantExamples =
+  (cbValiantActiveUsers :: Eff '[Valiant, Tracer] [Text])
+    `seq` (cbValiantSeedUsers :: Eff '[Valiant, Tracer] Int64)
+    `seq` ()
+
+-- cookbook: traced valiant query
+cbValiantActiveUsers :: (Valiant :> es, Tracer :> es) => Eff es [Text]
+cbValiantActiveUsers = ValiantT.fetchAllEff listActiveUsers ()
+
+-- cookbook: traced valiant batch insert
+cbValiantSeedUsers :: (Valiant :> es, Tracer :> es) => Eff es Int64
+cbValiantSeedUsers = ValiantT.executeBatchEff insertUser ["a", "b"]
+
+-- | Stand-in statements for the valiant mirror. The plugin would normally
+-- build these from validated SQL; 'mkStatement' constructs them directly so
+-- the mirror needs no plugin or database. Never run.
+listActiveUsers :: Statement () Text
+listActiveUsers = mkStatement "SELECT name FROM users WHERE active = true" [] ["name"] "inline"
+
+insertUser :: Statement Text ()
+insertUser = mkStatement "INSERT INTO users (name) VALUES ($1)" [25] [] "inline"
+#else
+valiantExamples = ()
 #endif
 
 -- servant examples (only when built with +servant).
