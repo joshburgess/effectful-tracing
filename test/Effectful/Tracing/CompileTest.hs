@@ -79,6 +79,18 @@ import Effectful.Tracing.Instrumentation.Database
   )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
+import Effectful.Tracing.Propagation.Composite
+  ( BaggagePropagator
+  , TraceContextPropagator
+  , b3Single
+  , extractBaggageAll
+  , extractContextFirst
+  , injectBaggageAll
+  , injectContextAll
+  , jaegerBaggage
+  , w3cBaggage
+  , w3cTraceContext
+  )
 import Effectful.Tracing.Log (activeCorrelationFields)
 import Effectful.Tracing.Propagation.Jaeger
   ( extractBaggageJaeger
@@ -205,6 +217,10 @@ docExamples =
     `seq` (cbB3Forward :: Eff '[Tracer] [Header])
     `seq` (cbJaegerConsume :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
     `seq` (cbJaegerForward :: Eff '[Tracer] [Header])
+    `seq` (cbCompositeConsume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
+    `seq` (cbCompositeForward :: Eff '[Tracer] [Header])
+    `seq` (cbCompositeServe :: [Header] -> Eff '[BaggageContext] () -> Eff '[] ())
+    `seq` (cbCompositeBaggageForward :: Eff '[BaggageContext] [Header])
     `seq` (cbServeWithBaggage :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
     `seq` (cbPriorityOf :: Eff '[BaggageContext] (Maybe Text))
     `seq` (cbHandleBaggage :: Eff '[BaggageContext, Tracer] [Header])
@@ -333,6 +349,32 @@ cbJaegerConsume headers =
 -- cookbook: "Interoperate with Jaeger (uber-trace-id) headers" (forward uber-trace-id)
 cbJaegerForward :: Tracer :> es => Eff es [Header]
 cbJaegerForward = injectContextJaeger
+
+-- cookbook: "Combine several propagators" (the configured trace-context list)
+cbPropagators :: [TraceContextPropagator]
+cbPropagators = [w3cTraceContext, b3Single]
+
+-- cookbook: "Combine several propagators" (continue the first matching format)
+cbCompositeConsume :: Tracer :> es => [Header] -> Eff es a -> Eff es a
+cbCompositeConsume headers =
+  maybe id withRemoteParent (extractContextFirst cbPropagators headers)
+
+-- cookbook: "Combine several propagators" (emit every configured format)
+cbCompositeForward :: Tracer :> es => Eff es [Header]
+cbCompositeForward = injectContextAll cbPropagators
+
+-- cookbook: "Combine several propagators" (merge baggage from every format)
+cbCompositeServe :: [Header] -> Eff (BaggageContext : es) a -> Eff es a
+cbCompositeServe headers =
+  runBaggageWith (extractBaggageAll cbBaggagePropagators headers)
+
+-- cookbook: "Combine several propagators" (forward baggage in every format)
+cbCompositeBaggageForward :: BaggageContext :> es => Eff es [Header]
+cbCompositeBaggageForward = injectBaggageAll cbBaggagePropagators
+
+-- cookbook: "Combine several propagators" (the configured baggage list)
+cbBaggagePropagators :: [BaggagePropagator]
+cbBaggagePropagators = [w3cBaggage, jaegerBaggage]
 
 -- cookbook: "Stamp logs with the active trace and span"
 cbLogEvent :: Tracer :> es => (Text -> [(Text, Text)] -> Eff es ()) -> Text -> Eff es ()

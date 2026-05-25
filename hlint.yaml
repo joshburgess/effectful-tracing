@@ -1,8 +1,0 @@
-# hlint configuration. See https://github.com/ndmitchell/hlint#readme
-# Run locally with: hlint src/ test/ bench/
-
-# Treat all warnings as errors in CI so lint blocks merge.
-- warn: { name: "Use camelCase" }
-
-# Project-specific tweaks can be added below as the codebase grows, e.g.:
-# - ignore: { name: "Redundant do", within: [Main] }

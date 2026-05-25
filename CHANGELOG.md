@@ -236,6 +236,17 @@ context propagation, and the WAI / http-client instrumentation helpers.
   propagators (no SDK dependency, no cabal flag; the only new dependency is
   `case-insensitive`, already in the transitive set), and tested with explicit
   vectors plus a fuzz totality property.
+- `Effectful.Tracing.Propagation.Composite`, which combines the single-format
+  propagators so a service can speak more than one at once (OpenTelemetry's
+  composite-propagator model). Each format becomes a value (`TraceContextPropagator`
+  for the span context, `BaggagePropagator` for baggage) with standard instances
+  `w3cTraceContext`, `b3Single`, `b3Multi`, `jaegerTraceContext`, `w3cBaggage`, and
+  `jaegerBaggage`. `injectContextAll` / `injectBaggageAll` write every configured
+  format; `extractContextFirst` takes the first parsing span context (order is the
+  priority), while `extractBaggageAll` merges entries from every format (baggage is
+  additive). Each propagator carries its `OTEL_PROPAGATORS` token name, and
+  `traceContextByToken` / `baggageByToken` resolve a token to its propagator. Pure,
+  works under every interpreter, no new dependency, no cabal flag.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

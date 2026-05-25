@@ -1,0 +1,14 @@
+# hlint configuration. See https://github.com/ndmitchell/hlint#readme
+# Run locally with: hlint src/ test/ bench/
+
+# Treat all warnings as errors in CI so lint blocks merge.
+- warn: { name: "Use camelCase" }
+
+# The composite propagators store their inject actions in rank-2 record fields
+# (forall es. ... => Eff es [...]). Applying such a field selector under traverse
+# needs a wrapping lambda to force instantiation at the call site; eta-reducing it
+# (as hlint suggests) would require impredicative types and does not compile.
+- ignore: { name: "Avoid lambda", within: [Effectful.Tracing.Propagation.Composite] }
+
+# Project-specific tweaks can be added below as the codebase grows, e.g.:
+# - ignore: { name: "Redundant do", within: [Main] }

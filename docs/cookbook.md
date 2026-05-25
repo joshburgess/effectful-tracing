@@ -272,6 +272,45 @@ jaegerForward :: (Tracer :> es) => Eff es [Header]
 jaegerForward = injectContextJaeger
 ```
 
+## Combine several propagators
+
+A real deployment rarely speaks exactly one format. A service might emit W3C
+`traceparent` for its own backend while still honouring inbound B3 from a mesh,
+or run alongside legacy Jaeger clients during a migration. OpenTelemetry models
+this with a **composite propagator**: a list of single-format propagators that
+all run on inject (every format is written) and are tried in order on extract
+(the first that parses wins). `Effectful.Tracing.Propagation.Composite` packages
+each format as a value and provides the fan-out and collapse combinators.
+
+```haskell
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer, withRemoteParent)
+import Effectful.Tracing.Propagation.Composite
+  (TraceContextPropagator, b3Single, extractContextFirst, injectContextAll, w3cTraceContext)
+import Network.HTTP.Types (Header)
+
+-- configure the formats once: emit W3C and B3, accept either inbound
+propagators :: [TraceContextPropagator]
+propagators = [w3cTraceContext, b3Single]
+
+-- inbound: continue whichever format the caller used (W3C is tried first)
+consume :: (Tracer :> es) => [Header] -> Eff es a -> Eff es a
+consume headers = maybe id withRemoteParent (extractContextFirst propagators headers)
+
+-- outbound: emit every configured format at once
+forward :: (Tracer :> es) => Eff es [Header]
+forward = injectContextAll propagators
+```
+
+Baggage composes the same way with `injectBaggageAll` / `extractBaggageAll` over
+`w3cBaggage` and `jaegerBaggage`. Because baggage is additive (unlike a single
+span context), extract merges the entries from every format rather than taking
+just the first. Each standard propagator also carries the token name
+OpenTelemetry's `OTEL_PROPAGATORS` variable uses for it (`tracecontext`, `b3`,
+`b3multi`, `jaeger`, `baggage`), and `traceContextByToken` / `baggageByToken`
+resolve a token to its propagator, which is how environment-variable
+configuration selects them.
+
 ## Carry application context as baggage
 
 When you want a value to ride along with the trace and be readable by every

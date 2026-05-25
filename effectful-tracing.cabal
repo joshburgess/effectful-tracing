@@ -120,6 +120,7 @@ library
     Effectful.Tracing.Propagation
     Effectful.Tracing.Propagation.B3
     Effectful.Tracing.Propagation.Baggage
+    Effectful.Tracing.Propagation.Composite
     Effectful.Tracing.Propagation.Jaeger
     Effectful.Tracing.Sampler
     Effectful.Tracing.SemConv
@@ -199,6 +200,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.PrettyPrintLeakSpec
     Effectful.Tracing.PrettyPrintSpec
     Effectful.Tracing.Propagation.B3Spec
+    Effectful.Tracing.Propagation.CompositeSpec
     Effectful.Tracing.Propagation.JaegerSpec
     Effectful.Tracing.PropagationSpec
     Effectful.Tracing.PropertySpec
