@@ -73,6 +73,10 @@ import Effectful.Tracing.Propagation.Baggage
   , maxBaggageEntries
   , parseBaggage
   )
+import Effectful.Tracing.Propagation.Jaeger
+  ( extractContextJaeger
+  , uberTraceIdHeader
+  )
 
 tests :: TestTree
 tests =
@@ -82,6 +86,8 @@ tests =
     , testProperty "extractContext is total on traceparent-shaped input" prop_extractContextShaped
     , testProperty "extractContextB3 is total on arbitrary headers" prop_extractB3Total
     , testProperty "extractContextB3 is total on b3-shaped input" prop_extractB3Shaped
+    , testProperty "extractContextJaeger is total on arbitrary headers" prop_extractJaegerTotal
+    , testProperty "extractContextJaeger is total on uber-trace-id-shaped input" prop_extractJaegerShaped
     , testProperty "extractBaggage is total on arbitrary headers" prop_extractBaggageTotal
     , testProperty "parseBaggage is total on baggage-shaped input" prop_parseBaggageShaped
     , testProperty "traceIdFromHex is total on arbitrary text" prop_traceIdFromHexTotal
@@ -139,6 +145,24 @@ prop_extractB3Shaped :: Property
 prop_extractB3Shaped = property $ do
   single <- forAll genB3ish
   ok <- eval (validContext (extractContextB3 [(b3Header, single)]))
+  assert ok
+
+-- | 'extractContextJaeger' is total: feeding random bytes to the
+-- @uber-trace-id@ header must yield a clean rejection or a context whose ids
+-- satisfy the validity invariant.
+prop_extractJaegerTotal :: Property
+prop_extractJaegerTotal = property $ do
+  raw <- forAll genFuzzBytes
+  ok <- eval (validContext (extractContextJaeger [(uberTraceIdHeader, raw)]))
+  assert ok
+
+-- | The same totality check biased toward @uber-trace-id@-shaped input
+-- (colon-joined hex-ish fields), so the field-count, id, and flags branches are
+-- exercised rather than bounced off the first malformed byte.
+prop_extractJaegerShaped :: Property
+prop_extractJaegerShaped = property $ do
+  raw <- forAll genJaegerish
+  ok <- eval (validContext (extractContextJaeger [(uberTraceIdHeader, raw)]))
   assert ok
 
 -- | 'extractBaggage' is total: feeding random bytes to the @baggage@ header must
@@ -249,6 +273,23 @@ genB3ish = do
         , pure "a3ce929d0e0e4736"
         , pure "00f067aa0ba902b7"
         , Gen.element ["0", "1", "d", ""]
+        ]
+
+-- | An @uber-trace-id@-shaped value: 1 to 5 colon-joined fields, each a hex-ish
+-- token of varying length (occasionally a known-good id, a parent placeholder,
+-- or a real flags value). This reaches the field-count, id, and flags branches
+-- of the Jaeger parser.
+genJaegerish :: Gen ByteString
+genJaegerish = do
+  fields <- Gen.list (Range.linear 1 5) genField
+  pure (encodeUtf8 (T.intercalate ":" fields))
+  where
+    genField =
+      Gen.choice
+        [ Gen.text (Range.linear 0 34) (Gen.element ("0123456789abcdef" :: String))
+        , pure "4bf92f3577b34da6a3ce929d0e0e4736"
+        , pure "00f067aa0ba902b7"
+        , Gen.element ["0", "1", "3", "d", ""]
         ]
 
 -- | A @traceparent@-shaped value: 1 to 6 hyphen-joined fields, each a hex-ish

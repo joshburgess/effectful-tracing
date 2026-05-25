@@ -224,6 +224,18 @@ context propagation, and the WAI / http-client instrumentation helpers.
   unsampled. It is built directly against the library's own `SpanContext` like
   the W3C propagator (no SDK dependency, no new dependency, no cabal flag) and is
   tested with single- and multi-header vectors plus a fuzz totality property.
+- `Effectful.Tracing.Propagation.Jaeger`, a third propagator for infrastructure
+  still instrumented with native Jaeger clients. `extractContextJaeger` /
+  `injectContextJaeger` read and write the single `uber-trace-id` header
+  (`{trace-id}:{span-id}:{parent-span-id}:{flags}`), left-padding the
+  leading-zero-stripped ids Jaeger emits back to full width, treating the
+  deprecated parent field as ignored, and mapping the flags low bit onto the
+  sampled decision. `extractBaggageJaeger` / `injectBaggageJaeger` carry Jaeger's
+  per-item `uberctx-` baggage headers to and from the `BaggageContext`. Built
+  directly against the library's own `SpanContext` like the W3C and B3
+  propagators (no SDK dependency, no cabal flag; the only new dependency is
+  `case-insensitive`, already in the transitive set), and tested with explicit
+  vectors plus a fuzz totality property.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

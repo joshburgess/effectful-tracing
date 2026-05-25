@@ -198,6 +198,33 @@ b3Forward :: (Tracer :> es) => Eff es [Header]
 b3Forward = injectContextB3
 ```
 
+## Interoperate with Jaeger (uber-trace-id) headers
+
+When the other side speaks native Jaeger rather than W3C or B3, swap in the
+propagator from `Effectful.Tracing.Propagation.Jaeger`. `extractContextJaeger`
+reads the `uber-trace-id` header and `injectContextJaeger` writes it; Jaeger's
+per-item `uberctx-` baggage headers are handled by `extractBaggageJaeger` and
+`injectBaggageJaeger`.
+
+```haskell
+import Effectful (Eff, (:>))
+import Effectful.Tracing (Tracer, withRemoteParent)
+import Effectful.Tracing.Baggage (BaggageContext, runBaggageWith)
+import Effectful.Tracing.Propagation.Jaeger
+  (extractBaggageJaeger, extractContextJaeger, injectContextJaeger)
+import Network.HTTP.Types (Header)
+
+-- inbound: continue a Jaeger caller's trace and seed its baggage
+jaegerConsume :: (Tracer :> es) => [Header] -> Eff (BaggageContext : es) a -> Eff es a
+jaegerConsume headers =
+  runBaggageWith (extractBaggageJaeger headers)
+    . maybe id withRemoteParent (extractContextJaeger headers)
+
+-- outbound: forward the active span as an uber-trace-id header
+jaegerForward :: (Tracer :> es) => Eff es [Header]
+jaegerForward = injectContextJaeger
+```
+
 ## Carry application context as baggage
 
 When you want a value to ride along with the trace and be readable by every

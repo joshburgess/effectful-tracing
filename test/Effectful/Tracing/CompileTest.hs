@@ -73,6 +73,11 @@ import Effectful.Tracing.Baggage
   )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
+import Effectful.Tracing.Propagation.Jaeger
+  ( extractBaggageJaeger
+  , extractContextJaeger
+  , injectContextJaeger
+  )
 import Effectful.Tracing.Testing
   ( findSpan
   , hasStatus
@@ -179,6 +184,8 @@ docExamples =
     `seq` (cbConsume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Consume :: [Header] -> Eff '[Tracer] () -> Eff '[Tracer] ())
     `seq` (cbB3Forward :: Eff '[Tracer] [Header])
+    `seq` (cbJaegerConsume :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
+    `seq` (cbJaegerForward :: Eff '[Tracer] [Header])
     `seq` (cbServeWithBaggage :: [Header] -> Eff '[BaggageContext, Tracer] () -> Eff '[Tracer] ())
     `seq` (cbPriorityOf :: Eff '[BaggageContext] (Maybe Text))
     `seq` (cbHandleBaggage :: Eff '[BaggageContext, Tracer] [Header])
@@ -292,6 +299,16 @@ cbB3Consume headers =
 -- cookbook: "Interoperate with B3 (Zipkin) headers" (forward as a single b3 header)
 cbB3Forward :: Tracer :> es => Eff es [Header]
 cbB3Forward = injectContextB3
+
+-- cookbook: "Interoperate with Jaeger (uber-trace-id) headers" (continue + baggage)
+cbJaegerConsume :: Tracer :> es => [Header] -> Eff (BaggageContext : es) a -> Eff es a
+cbJaegerConsume headers =
+  runBaggageWith (extractBaggageJaeger headers)
+    . maybe id withRemoteParent (extractContextJaeger headers)
+
+-- cookbook: "Interoperate with Jaeger (uber-trace-id) headers" (forward uber-trace-id)
+cbJaegerForward :: Tracer :> es => Eff es [Header]
+cbJaegerForward = injectContextJaeger
 
 -- cookbook: "Carry application context as baggage" (seed inbound baggage)
 cbServeWithBaggage :: [Header] -> Eff (BaggageContext : es) a -> Eff es a
