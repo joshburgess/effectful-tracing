@@ -11,7 +11,8 @@ pretty-print, OpenTelemetry); W3C Trace Context, B3, and Jaeger propagation
 (composable, and configurable from `OTEL_` environment variables); sampling;
 span limits; async context propagation; baggage; a log-correlation bridge;
 in-test assertions; and instrumentation helpers for WAI, http-client, Servant,
-databases (postgresql-simple, sqlite-simple, valiant), and message queues.
+databases (postgresql-simple, sqlite-simple, valiant), and message queues
+(RabbitMQ via amqp).
 
 ### Added
 

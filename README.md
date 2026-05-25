@@ -21,7 +21,8 @@ other interpreters (no-op, in-memory, pretty-print) for testing and development.
 > variables); sampling; span limits; async context propagation; baggage; a
 > log-correlation bridge; in-test assertions; and the instrumentation helpers for
 > WAI, http-client, Servant, databases (postgresql-simple, sqlite-simple,
-> valiant), and message queues have all landed.
+> valiant), and message queues (with a RabbitMQ binding over amqp) have all
+> landed.
 
 ## Install
 
