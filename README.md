@@ -15,11 +15,13 @@ keeps the API clean. The library does not reimplement the OpenTelemetry wire
 format: it compiles down to `hs-opentelemetry` for real export and ships several
 other interpreters (no-op, in-memory, pretty-print) for testing and development.
 
-> Status: preparing the first release (`0.1.0.0`). All the planned interpreters
-> (no-op, in-memory, pretty-print, OpenTelemetry), W3C Trace Context
-> propagation, sampling, async context propagation, and the WAI / http-client
-> instrumentation helpers have landed. See `PROJECT_BUILD_PLAN.md` for the full
-> roadmap.
+> Status: preparing the first release (`0.1.0.0`). The planned interpreters
+> (no-op, in-memory, pretty-print, OpenTelemetry); W3C Trace Context, B3, and
+> Jaeger propagation (composable, and configurable from `OTEL_` environment
+> variables); sampling; span limits; async context propagation; baggage; a
+> log-correlation bridge; in-test assertions; and the instrumentation helpers for
+> WAI, http-client, Servant, databases (postgresql-simple, sqlite-simple,
+> valiant), and message queues have all landed.
 
 ## Install
 
@@ -90,7 +92,7 @@ into a buffer you can assert on.
 
 ## Instrumenting a web service
 
-Two optional helpers cover the common server seams. Each is behind a cabal flag
+A few optional helpers cover the common server seams. Each is behind a cabal flag
 (off by default), so the base package never pulls in a web stack:
 
 - `Effectful.Tracing.Instrumentation.Wai` (flag `wai`): a `Middleware` that opens
@@ -98,6 +100,9 @@ Two optional helpers cover the common server seams. Each is behind a cabal flag
 - `Effectful.Tracing.Instrumentation.HttpClient` (flag `http-client`): a wrapper
   that opens a `client` span and injects the trace context into outbound
   requests.
+- `Effectful.Tracing.Instrumentation.Servant` (flag `servant`): a per-endpoint
+  combinator plus middleware that names server spans `"{method} {route}"` with
+  the matched route template recorded as `http.route`.
 
 Enable them when depending on the package:
 
@@ -157,6 +162,28 @@ exactly this wiring, see [`examples/servant-app`](examples/servant-app), a
 two-endpoint Servant service whose inbound and outbound spans join into one trace
 in Jaeger.
 
+## Instrumenting databases and message queues
+
+The same scoped-span approach covers the database client side and message queues,
+through framework-agnostic cores that are always built (no flag, no extra
+dependencies):
+
+- `Effectful.Tracing.Instrumentation.Database`: describe a call with a
+  `DatabaseQuery` and run it inside `withQuerySpan`, which opens a `client` span
+  named `"{operation} {collection}"` with the stable `db.*` attributes. Thin
+  driver bindings layer on top behind their own flags: `postgresql-simple`,
+  `sqlite-simple`, and [`valiant`](https://hackage.haskell.org/package/valiant)
+  (the compile-time checked PostgreSQL library), each a drop-in for the driver's
+  own runners.
+- `Effectful.Tracing.Instrumentation.Messaging`: describe a publish or consume
+  with a `MessagingOperation` and run it inside `withMessagingSpan`, which picks
+  the span kind from the operation (`producer` / `consumer` / `client`) and
+  records the `messaging.*` conventions. `injectMessageHeaders` and
+  `withConsumerSpan` carry the trace across the broker through message headers.
+
+See the cookbook recipes "Trace a database query" and "Trace a message producer
+and consumer" for runnable examples.
+
 ## Exporting to OpenTelemetry
 
 Build with the `otel` flag and discharge the effect with `runTracerOTel`
@@ -172,7 +199,8 @@ up a local Jaeger with `docker compose`.
 - [`docs/tutorial.md`](docs/tutorial.md): a guided walkthrough from a trace on
   your terminal to OpenTelemetry export, in about fifteen minutes.
 - [`docs/cookbook.md`](docs/cookbook.md): short recipes for everyday tasks
-  (trace an existing function, sampling, connecting HTTP traces, workers).
+  (trace an existing function, sampling, connecting HTTP traces, database queries,
+  message producers and consumers, workers).
 - [`docs/design.md`](docs/design.md): how the library is designed, organized by
   concept (the data model, the Tracer effect, the lifecycle, sampling,
   propagation, OTel export). Start here to understand the internals.

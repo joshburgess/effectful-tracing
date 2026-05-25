@@ -6,9 +6,12 @@ project aims to be PVP-compliant.
 
 ## 0.1.0.0 (unreleased)
 
-The first release: the `Tracer` effect, four interpreters (no-op, in-memory,
-pretty-print, OpenTelemetry), W3C Trace Context propagation, sampling, async
-context propagation, and the WAI / http-client instrumentation helpers.
+The first release: the `Tracer` effect; four interpreters (no-op, in-memory,
+pretty-print, OpenTelemetry); W3C Trace Context, B3, and Jaeger propagation
+(composable, and configurable from `OTEL_` environment variables); sampling;
+span limits; async context propagation; baggage; a log-correlation bridge;
+in-test assertions; and instrumentation helpers for WAI, http-client, Servant,
+databases (postgresql-simple, sqlite-simple, valiant), and message queues.
 
 ### Added
 
