@@ -173,7 +173,9 @@ import Effectful.Tracing.Instrumentation.Valiant qualified as ValiantT
 
 #ifdef SERVANT
 import Data.Proxy (Proxy (Proxy))
+#ifndef WAI
 import Network.Wai (Application)
+#endif
 import Servant (Capture, Get, PlainText, Server, serve, type (:<|>) ((:<|>)))
 import Servant qualified as Sv
 import Effectful.Tracing.Instrumentation.Servant (WithSpanName, traceServantMiddleware)
