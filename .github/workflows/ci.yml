@@ -76,8 +76,13 @@ jobs:
           ghc-version: "9.10.3"
           cabal-version: "3.14.2.0"
 
+      # The postgresql-simple flag pulls in postgresql-libpq, which needs the
+      # libpq headers and pg_config at build time.
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
       - name: Configure
-        run: cabal configure --enable-tests --flags="otel wai http-client secure-ids"
+        run: cabal configure --enable-tests --flags="otel wai http-client secure-ids postgresql-simple"
 
       - name: Cache cabal store
         uses: actions/cache@v4
@@ -88,10 +93,10 @@ jobs:
             ${{ runner.os }}-ghc9.10.3-flags-
 
       - name: Build (all flags)
-        run: cabal build all --flags="otel wai http-client secure-ids"
+        run: cabal build all --flags="otel wai http-client secure-ids postgresql-simple"
 
       - name: Test (all flags)
-        run: cabal test all --flags="otel wai http-client secure-ids" --test-show-details=direct
+        run: cabal test all --flags="otel wai http-client secure-ids postgresql-simple" --test-show-details=direct
 
   haddock:
     name: haddock (GHC 9.10.3)
@@ -104,6 +109,11 @@ jobs:
         with:
           ghc-version: "9.10.3"
           cabal-version: "3.14.2.0"
+
+      # The postgresql-simple flag pulls in postgresql-libpq, which needs the
+      # libpq headers and pg_config at build time.
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
 
       - name: Cache cabal store
         uses: actions/cache@v4
@@ -120,7 +130,7 @@ jobs:
       - name: Build Haddock (fail on broken doc-links or <100% coverage)
         run: |
           set -o pipefail
-          cabal haddock all --flags="otel wai http-client secure-ids" 2>&1 | tee haddock.log
+          cabal haddock all --flags="otel wai http-client secure-ids postgresql-simple" 2>&1 | tee haddock.log
           if grep -q "could not find link destination" haddock.log; then
             echo "::error::Haddock reported broken doc-links (see log above)"
             exit 1
@@ -270,6 +280,11 @@ jobs:
           ghc-version: "9.10.3"
           cabal-version: "3.14.2.0"
 
+      # The postgresql-simple flag pulls in postgresql-libpq, which needs the
+      # libpq headers and pg_config at build time.
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
       - name: Cache cabal store
         uses: actions/cache@v4
         with:
@@ -296,7 +311,7 @@ jobs:
           tar -xzf "$tarball" -C "$workdir"
           srcdir=$(find "$workdir" -maxdepth 1 -type d -name 'effectful-tracing-*')
           cd "$srcdir"
-          cabal build all --enable-tests --flags="otel wai http-client secure-ids"
+          cabal build all --enable-tests --flags="otel wai http-client secure-ids postgresql-simple"
 
   hlint:
     name: hlint

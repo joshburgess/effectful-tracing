@@ -173,6 +173,53 @@ consume headers work =
   maybe id withRemoteParent (extractContext headers) work
 ```
 
+## Trace a database query
+
+To put a database call on the trace, wrap it in a `client`-kind span recording
+the stable OpenTelemetry database conventions (`db.system.name`, `db.query.text`,
+and friends). `Effectful.Tracing.Instrumentation.Database` is driver-agnostic:
+you describe the call with a `DatabaseQuery` and run it inside `withQuerySpan`,
+which names the span `{operation} {collection}` (for example `SELECT users`) and
+finalizes it even if the query throws. Record the *parameterized* statement
+(placeholders, not interpolated values) so row data never reaches the span.
+
+```haskell
+import Control.Monad.IO.Class (liftIO)
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.Database
+  (DatabaseQuery (..), databaseQuery, withQuerySpan)
+
+-- 'rawSelectActiveUsers' stands in for your driver's own query call.
+fetchActiveUsers :: (IOE :> es, Tracer :> es) => Eff es [(Int, Text)]
+fetchActiveUsers =
+  withQuerySpan
+    (databaseQuery "postgresql")
+      { queryText = Just "SELECT id, name FROM users WHERE active = $1"
+      , queryOperation = Just "SELECT"
+      , queryCollection = Just "users"
+      }
+    (liftIO rawSelectActiveUsers)
+```
+
+If you use `postgresql-simple`, the `postgresql-simple` cabal flag builds
+`Effectful.Tracing.Instrumentation.PostgresqlSimple`: drop-in `query`, `query_`,
+`execute`, and `execute_` that do this wrapping for you. Import it qualified so the
+traced runners shadow the originals; each derives `db.query.text` from the
+statement template and `db.operation.name` from its leading keyword.
+
+```haskell
+import Data.Text (Text)
+import Database.PostgreSQL.Simple (Connection, Only (..))
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.PostgresqlSimple qualified as Pg
+
+activeUserNames :: (IOE :> es, Tracer :> es) => Connection -> Eff es [Only Text]
+activeUserNames conn =
+  Pg.query conn "SELECT name FROM users WHERE active = ?" (Only True)
+```
+
 ## Interoperate with B3 (Zipkin) headers
 
 When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,

@@ -24,7 +24,8 @@
 --
 -- The naming follows the convention namespaces: @http.*@ for protocol-level
 -- request and response attributes, @url.*@ for the parts of the request URL,
--- @network.*@ for transport details, and @exception.*@ for recorded errors.
+-- @network.*@ for transport details, @db.*@ for database client calls, and
+-- @exception.*@ for recorded errors.
 module Effectful.Tracing.SemConv
   ( -- * HTTP attributes
     httpRequestMethod
@@ -39,6 +40,13 @@ module Effectful.Tracing.SemConv
 
     -- * Network attributes
   , networkProtocolVersion
+
+    -- * Database attributes
+  , dbSystemName
+  , dbQueryText
+  , dbOperationName
+  , dbCollectionName
+  , dbNamespace
 
     -- * Exception attributes
   , exceptionType
@@ -90,6 +98,36 @@ urlQuery = "url.query"
 -- @\"2\"@. (Stable replacement for the pre-stable @http.flavor@.)
 networkProtocolVersion :: Text
 networkProtocolVersion = "network.protocol.version"
+
+-- | @db.system.name@: the database management system, for example
+-- @\"postgresql\"@ or @\"mysql\"@. (Stable replacement for the pre-stable
+-- @db.system@.)
+dbSystemName :: Text
+dbSystemName = "db.system.name"
+
+-- | @db.query.text@: the database query text, for example
+-- @\"SELECT * FROM users WHERE id = $1\"@. Record the /parameterized/ statement
+-- (placeholders, not interpolated values) to keep cardinality low and avoid
+-- leaking row data. (Stable replacement for the pre-stable @db.statement@.)
+dbQueryText :: Text
+dbQueryText = "db.query.text"
+
+-- | @db.operation.name@: the name of the operation being executed, for example
+-- @\"SELECT\"@ or @\"INSERT\"@. This is the low-cardinality command keyword, not
+-- the full statement. (Stable replacement for the pre-stable @db.operation@.)
+dbOperationName :: Text
+dbOperationName = "db.operation.name"
+
+-- | @db.collection.name@: the primary table (or collection) the operation acts
+-- on, for example @\"users\"@. (Stable replacement for the pre-stable
+-- @db.sql.table@ \/ @db.mongodb.collection@.)
+dbCollectionName :: Text
+dbCollectionName = "db.collection.name"
+
+-- | @db.namespace@: the logical database name the connection is scoped to, for
+-- example @\"orders\"@. (Stable replacement for the pre-stable @db.name@.)
+dbNamespace :: Text
+dbNamespace = "db.namespace"
 
 -- | @exception.type@: the type or class of an exception, for example
 -- @\"IOException\"@.

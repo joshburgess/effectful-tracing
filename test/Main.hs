@@ -20,6 +20,7 @@ import Effectful.Tracing.FuzzSpec qualified as FuzzSpec
 import Effectful.Tracing.IdGenSpec qualified as IdGenSpec
 import Effectful.Tracing.IdsSpec qualified as IdsSpec
 import Effectful.Tracing.InMemorySpec qualified as InMemorySpec
+import Effectful.Tracing.Instrumentation.DatabaseSpec qualified as DatabaseSpec
 import Effectful.Tracing.LifecycleSpec qualified as LifecycleSpec
 import Effectful.Tracing.LogSpec qualified as LogSpec
 import Effectful.Tracing.NoOpSpec qualified as NoOpSpec
@@ -59,6 +60,7 @@ main =
           , CompileTest.tests
           , NoOpSpec.tests
           , InMemorySpec.tests
+          , DatabaseSpec.tests
           , LifecycleSpec.tests
           , LogSpec.tests
           , PrettyPrintSpec.tests

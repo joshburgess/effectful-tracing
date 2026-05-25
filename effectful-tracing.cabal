@@ -59,6 +59,15 @@ flag http-client
   default:     False
   manual:      True
 
+flag postgresql-simple
+  description:
+    Build the @postgresql-simple@ tracing wrappers
+    (@Effectful.Tracing.Instrumentation.PostgresqlSimple@). Off by default so the
+    base package does not depend on @postgresql-simple@ (and its @libpq@ C
+    dependency).
+  default:     False
+  manual:      True
+
 flag secure-ids
   description:
     Mint trace and span identifiers from a cryptographically secure source
@@ -94,6 +103,7 @@ library
     Effectful.Tracing.Baggage
     Effectful.Tracing.Concurrent
     Effectful.Tracing.Effect
+    Effectful.Tracing.Instrumentation.Database
     Effectful.Tracing.Log
     Effectful.Tracing.Interpreter.InMemory
     Effectful.Tracing.Interpreter.NoOp
@@ -139,6 +149,10 @@ library
     exposed-modules: Effectful.Tracing.Instrumentation.HttpClient
     build-depends:   http-client >=0.7 && <0.8
 
+  if flag(postgresql-simple)
+    exposed-modules: Effectful.Tracing.Instrumentation.PostgresqlSimple
+    build-depends:   postgresql-simple >=0.6 && <0.8
+
   if flag(secure-ids)
     cpp-options:   -DSECURE_IDS
     build-depends: crypton >=1.0 && <1.2
@@ -160,6 +174,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.IdGenSpec
     Effectful.Tracing.IdsSpec
     Effectful.Tracing.InMemorySpec
+    Effectful.Tracing.Instrumentation.DatabaseSpec
     Effectful.Tracing.LifecycleSpec
     Effectful.Tracing.LogSpec
     Effectful.Tracing.NoOpSpec
@@ -213,6 +228,10 @@ test-suite effectful-tracing-test
       , http-client >=0.7 && <0.8
       , wai         >=3.2 && <3.3
       , warp        >=3.3 && <3.5
+
+  if flag(postgresql-simple)
+    cpp-options:   -DPOSTGRESQL_SIMPLE
+    build-depends: postgresql-simple >=0.6 && <0.8
 
   -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
   -- only flips the source label so the test output names which byte source was

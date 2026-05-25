@@ -254,6 +254,22 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `[(Text, Text)]` with no logging-library dependency and no cabal flag, so they
   drop into `co-log`, `katip`, `fast-logger`, or a bare handle identically, and
   return the empty / `Nothing` case cleanly when no span is in scope.
+- Database instrumentation. `Effectful.Tracing.Instrumentation.Database` is a
+  framework-agnostic core (always built, no new dependency): describe a call with
+  a `DatabaseQuery` and run it inside `withQuerySpan`, which opens a `client`-kind
+  span named `{operation} {collection}` and records the stable `db.*` semantic
+  conventions (`db.system.name`, `db.query.text`, `db.operation.name`,
+  `db.collection.name`, `db.namespace`, all new constants in
+  `Effectful.Tracing.SemConv`). `inferOperationName` derives the low-cardinality
+  operation keyword from a statement without parsing SQL. The new
+  `postgresql-simple` cabal flag (off by default) additionally builds
+  `Effectful.Tracing.Instrumentation.PostgresqlSimple`: drop-in `query`, `query_`,
+  `execute`, and `execute_` that stay in `Eff` and wrap each call in
+  `withQuerySpan`, recording the parameterized template (never interpolated
+  values) as `db.query.text`. The flag pulls in `postgresql-simple` (and its
+  `libpq` C dependency), so it is built in the all-flags CI jobs with `libpq-dev`
+  installed; the core is tested through the in-memory interpreter and the binding
+  through a flag-gated compile mirror.
 - W3C Baggage propagation: `Effectful.Tracing.Baggage` adds ambient, key-value
   context that rides alongside a trace but is independent of span attributes. A
   dynamic `BaggageContext` effect carries it the same way the active span is

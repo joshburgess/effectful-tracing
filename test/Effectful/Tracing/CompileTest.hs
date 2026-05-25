@@ -71,6 +71,12 @@ import Effectful.Tracing.Baggage
   , runBaggageWith
   , withBaggageEntry
   )
+import Control.Monad.IO.Class (liftIO)
+import Effectful.Tracing.Instrumentation.Database
+  ( DatabaseQuery (queryCollection, queryOperation, queryText)
+  , databaseQuery
+  , withQuerySpan
+  )
 import Effectful.Tracing.Propagation.B3 (extractContextB3, injectContextB3)
 import Effectful.Tracing.Propagation.Baggage (extractBaggage, injectBaggage)
 import Effectful.Tracing.Log (activeCorrelationFields)
@@ -114,10 +120,14 @@ import Effectful.Tracing.Instrumentation.Wai (traceMiddleware, traceMiddlewareWi
 #endif
 
 #ifdef HTTP_CLIENT
-import Control.Monad.IO.Class (liftIO)
 import Network.HTTP.Client (Manager, Response, parseRequest)
 import Data.ByteString.Lazy (ByteString)
 import Effectful.Tracing.Instrumentation.HttpClient (httpLbsTraced)
+#endif
+
+#ifdef POSTGRESQL_SIMPLE
+import Database.PostgreSQL.Simple (Connection, Only (..))
+import Effectful.Tracing.Instrumentation.PostgresqlSimple qualified as Pg
 #endif
 
 #ifdef OTEL
@@ -193,6 +203,7 @@ docExamples =
     `seq` (cbCheckHandlerTrace :: IO ())
     `seq` (cbLogEvent :: (Text -> [(Text, Text)] -> Eff '[Tracer] ()) -> Text -> Eff '[Tracer] ())
     `seq` (cbHandleRequest :: (Text -> [(Text, Text)] -> Eff '[Tracer] ()) -> Eff '[Tracer] ())
+    `seq` (cbFetchActiveUsers :: Eff '[Tracer, IOE] [(Int, Text)])
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
     `seq` (cbPrettyRun :: Eff '[Tracer, IOE] () -> IO ())
@@ -206,6 +217,7 @@ docExamples =
     `seq` stubConstructors
     `seq` waiExamples
     `seq` httpClientExamples
+    `seq` postgresqlSimpleExamples
     `seq` otelExamples
     `seq` ()
 
@@ -321,6 +333,22 @@ cbLogEvent emit message = do
 
 cbHandleRequest :: Tracer :> es => (Text -> [(Text, Text)] -> Eff es ()) -> Eff es ()
 cbHandleRequest emit = withSpan "handle" $ cbLogEvent emit "handling request"
+
+-- cookbook: "Trace a database query" (framework-agnostic withQuerySpan)
+cbFetchActiveUsers :: (IOE :> es, Tracer :> es) => Eff es [(Int, Text)]
+cbFetchActiveUsers =
+  withQuerySpan
+    (databaseQuery "postgresql")
+      { queryText = Just "SELECT id, name FROM users WHERE active = $1"
+      , queryOperation = Just "SELECT"
+      , queryCollection = Just "users"
+      }
+    (liftIO rawSelectActiveUsers)
+
+-- | Stands in for a driver's own query call in the database cookbook mirror;
+-- only forced to WHNF, never run.
+rawSelectActiveUsers :: IO [(Int, Text)]
+rawSelectActiveUsers = error "compile-only: doc mirror is never run"
 
 -- cookbook: "Carry application context as baggage" (seed inbound baggage)
 cbServeWithBaggage :: [Header] -> Eff (BaggageContext : es) a -> Eff es a
@@ -477,6 +505,21 @@ cbFetchProfile manager = withSpan "load.profile" $ do
   httpLbsTraced req manager
 #else
 httpClientExamples = ()
+#endif
+
+-- postgresql-simple examples (only when built with +postgresql-simple).
+postgresqlSimpleExamples :: ()
+#ifdef POSTGRESQL_SIMPLE
+postgresqlSimpleExamples =
+  (cbActiveUserNames :: Connection -> Eff '[Tracer, IOE] [Only Text])
+    `seq` ()
+
+-- cookbook: traced postgresql-simple query
+cbActiveUserNames :: (IOE :> es, Tracer :> es) => Connection -> Eff es [Only Text]
+cbActiveUserNames conn =
+  Pg.query conn "SELECT name FROM users WHERE active = ?" (Only True)
+#else
+postgresqlSimpleExamples = ()
 #endif
 
 -- OpenTelemetry export example (only when built with +otel). The exporter and
