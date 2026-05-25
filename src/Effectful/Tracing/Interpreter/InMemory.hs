@@ -41,6 +41,7 @@ module Effectful.Tracing.Interpreter.InMemory
   , readCapturedSpans
   , runTracerInMemory
   , runTracerInMemoryWith
+  , runTracerInMemoryWithLimits
 
     -- * Querying captured spans
   , findSpan
@@ -62,6 +63,7 @@ import Effectful (Eff, IOE, (:>))
 import Effectful.Tracing.Effect (Tracer)
 import Effectful.Tracing.Internal.Live (interpretTracer)
 import Effectful.Tracing.Sampler (Sampler, alwaysOn)
+import Effectful.Tracing.SpanLimits (SpanLimits, defaultSpanLimits)
 import Effectful.Tracing.Internal.Types
   ( Span (spanContext, spanName, spanParentContext)
   , SpanContext (spanContextSpanId, spanContextTraceId)
@@ -92,15 +94,29 @@ runTracerInMemory = runTracerInMemoryWith alwaysOn
 
 -- | Like 'runTracerInMemory', but with a caller-chosen 't:Sampler'. There is no
 -- export step here, so 'Effectful.Tracing.Sampler.RecordOnly' and 'Effectful.Tracing.Sampler.RecordAndSample' both capture the
--- span; only 'Effectful.Tracing.Sampler.Drop' omits it.
+-- span; only 'Effectful.Tracing.Sampler.Drop' omits it. Uses 'defaultSpanLimits';
+-- 'runTracerInMemoryWithLimits' overrides them.
 runTracerInMemoryWith
   :: IOE :> es
   => Sampler
   -> CapturedSpans
   -> Eff (Tracer : es) a
   -> Eff es a
-runTracerInMemoryWith sampler (CapturedSpans buffer) =
-  interpretTracer sampler (\completed -> atomically (modifyTVar' buffer (|> completed)))
+runTracerInMemoryWith = runTracerInMemoryWithLimits defaultSpanLimits
+
+-- | Like 'runTracerInMemoryWith', but with caller-chosen 'SpanLimits' as well as
+-- a sampler. Pass 'Effectful.Tracing.SpanLimits.unlimitedSpanLimits' to capture
+-- everything a computation emitted, or a tightened 'SpanLimits' to exercise the
+-- caps in a test.
+runTracerInMemoryWithLimits
+  :: IOE :> es
+  => SpanLimits
+  -> Sampler
+  -> CapturedSpans
+  -> Eff (Tracer : es) a
+  -> Eff es a
+runTracerInMemoryWithLimits limits sampler (CapturedSpans buffer) =
+  interpretTracer limits sampler (\completed -> atomically (modifyTVar' buffer (|> completed)))
 
 -- | Find the first captured span with the given name.
 findSpan :: Text -> [Span] -> Maybe Span

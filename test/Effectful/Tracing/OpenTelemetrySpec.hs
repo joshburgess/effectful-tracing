@@ -68,11 +68,12 @@ import Effectful.Tracing.Interpreter.InMemory
   , runTracerInMemory
   )
 import Effectful.Tracing.Interpreter.OpenTelemetry
-  ( OtelConfig (OtelConfig, instrumentationScope, sampler, spanProcessors)
+  ( OtelConfig (OtelConfig, instrumentationScope, sampler, spanLimits, spanProcessors)
   , runTracerOTel
   , toImmutableSpan
   )
 import Effectful.Tracing.Sampler (alwaysOn)
+import Effectful.Tracing.SpanLimits (defaultSpanLimits)
 
 tests :: TestTree
 tests =
@@ -159,6 +160,7 @@ endToEndTests =
               { spanProcessors = [processor]
               , instrumentationScope = "effectful-tracing-test"
               , sampler = alwaysOn
+              , spanLimits = defaultSpanLimits
               }
       runEff (runTracerOTel config program)
       exported <- readMVar captured

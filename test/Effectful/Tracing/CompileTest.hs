@@ -114,6 +114,7 @@ import Effectful.Tracing.Interpreter.InMemory
   ( newCapturedSpans
   , readCapturedSpans
   , runTracerInMemoryWith
+  , runTracerInMemoryWithLimits
   )
 import Effectful.Tracing.Interpreter.NoOp (runTracerNoOp)
 import Effectful.Tracing.Interpreter.PrettyPrint
@@ -127,6 +128,10 @@ import Effectful.Tracing.Sampler
   , SamplerInput (initialAttributes)
   , SamplingDecision (RecordAndSample)
   , simpleResult
+  )
+import Effectful.Tracing.SpanLimits
+  ( SpanLimits (attributeValueLengthLimit, eventCountLimit)
+  , defaultSpanLimits
   )
 
 #ifdef WAI
@@ -236,6 +241,7 @@ docExamples =
     `seq` (cbWorker :: Eff '[Queue, Tracer] ())
     `seq` (cbEnqueueBackground :: Eff '[Tracer, Concurrent] ())
     `seq` (cbPrettyRun :: Eff '[Tracer, IOE] () -> IO ())
+    `seq` (cbBoundedRun :: Eff '[Tracer, IOE] () -> IO [Span])
     `seq` (tutCheckout :: Eff '[Tracer] Int)
     `seq` (tutAnnotated :: Eff '[Tracer] ())
     `seq` (tutSampledRun :: Eff '[Tracer, IOE] () -> IO [Span])
@@ -472,6 +478,14 @@ cbPrettyRun action = do
           }
   runEff (runTracerPretty config action)
 
+-- cookbook: "Bound what a span records"
+cbBoundedRun :: Eff '[Tracer, IOE] a -> IO [Span]
+cbBoundedRun action = runEff $ do
+  captured <- newCapturedSpans
+  let limits = defaultSpanLimits {attributeValueLengthLimit = Just 1024, eventCountLimit = Just 64}
+  _ <- runTracerInMemoryWithLimits limits alwaysOn captured action
+  readCapturedSpans captured
+
 -- tutorial: first traced computation
 tutCheckout :: Tracer :> es => Eff es Int
 tutCheckout = withSpan "checkout" $ do
@@ -634,6 +648,7 @@ tutOtelRun action = do
           { spanProcessors = []
           , instrumentationScope = "checkout-service"
           , sampler = parentBased (defaultParentBasedConfig alwaysOn)
+          , spanLimits = defaultSpanLimits
           }
   runEff (runTracerOTel config action)
 #else

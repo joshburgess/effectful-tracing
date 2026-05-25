@@ -45,6 +45,7 @@ module Effectful.Tracing.Testing
   , readCapturedSpans
   , runTracerInMemory
   , runTracerInMemoryWith
+  , runTracerInMemoryWithLimits
 
     -- * Finding spans
   , findSpan
@@ -86,6 +87,7 @@ import Effectful.Tracing.Interpreter.InMemory
   , rootSpans
   , runTracerInMemory
   , runTracerInMemoryWith
+  , runTracerInMemoryWithLimits
   )
 import Effectful.Tracing.Internal.Types
   ( Event (eventName)

@@ -208,6 +208,7 @@ Then wire the exporter and processor from `hs-opentelemetry-sdk` /
 
 ```haskell
 import Effectful.Tracing.Interpreter.OpenTelemetry (OtelConfig (..), runTracerOTel)
+import Effectful.Tracing.SpanLimits (defaultSpanLimits)
 import OpenTelemetry.Exporter.OTLP.Span (otlpExporter, loadExporterEnvironmentVariables)
 import OpenTelemetry.Processor.Batch.Span (batchProcessor, batchTimeoutConfig)
 
@@ -219,6 +220,7 @@ main = do
         { spanProcessors      = [processor]
         , instrumentationScope = "checkout-service"
         , sampler             = parentBased (defaultParentBasedConfig alwaysOn)
+        , spanLimits          = defaultSpanLimits
         }
   total <- runEff (runTracerOTel config checkout)
   print total

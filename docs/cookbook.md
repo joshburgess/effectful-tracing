@@ -571,3 +571,38 @@ run action = do
 
 `TimeFormat` is one of `DurationOnly` (the default), `RelativeToTraceStart`
 (`+12ms (8ms)`), or `Absolute` (wall-clock start plus duration).
+
+## Bound what a span records
+
+A span with no upper bound on what it records is a memory hazard: a loop that
+calls `addEvent` per iteration grows the in-flight span without limit, and a
+stray multi-megabyte string value rides all the way to the exporter.
+`Effectful.Tracing.SpanLimits` is the same guard the OpenTelemetry SDK applies:
+a `SpanLimits` record that caps the attribute, event, and link counts per span
+and truncates long string values. The count caps are enforced as the span
+records (so an in-flight span cannot grow past the limit), and the value-length
+cap truncates on the way out.
+
+```haskell
+import Effectful (runEff)
+import Effectful.Tracing (alwaysOn)
+import Effectful.Tracing.Interpreter.InMemory
+  (newCapturedSpans, readCapturedSpans, runTracerInMemoryWithLimits)
+import Effectful.Tracing.SpanLimits (SpanLimits (..), defaultSpanLimits)
+
+-- Start from the OpenTelemetry defaults (128 attributes / events / links, no
+-- value-length cap) and tighten the two fields you care about.
+limits :: SpanLimits
+limits = defaultSpanLimits {attributeValueLengthLimit = Just 1024, eventCountLimit = Just 64}
+
+run action = do
+  captured <- newCapturedSpans
+  _ <- runTracerInMemoryWithLimits limits alwaysOn captured action
+  readCapturedSpans captured
+```
+
+Each cap is a `Maybe Int`, where `Nothing` means unlimited. `defaultSpanLimits`
+matches the OpenTelemetry SDK defaults; `unlimitedSpanLimits` disables every cap,
+which is handy in a test that wants to assert on everything a computation
+emitted. The same `spanLimits` field is on `PrettyPrintConfig` and `OtelConfig`,
+so the pretty-print and OpenTelemetry interpreters take limits the same way.

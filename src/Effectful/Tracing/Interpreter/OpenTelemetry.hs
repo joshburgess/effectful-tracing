@@ -86,6 +86,7 @@ import Effectful.Tracing.Internal.Types
   , traceStateEntries
   )
 import Effectful.Tracing.Sampler (Sampler)
+import Effectful.Tracing.SpanLimits (SpanLimits)
 
 -- | How to export spans to OpenTelemetry.
 --
@@ -105,6 +106,10 @@ data OtelConfig = OtelConfig
   -- spans by this scope.
   , sampler :: !Sampler
   -- ^ Our sampler, consulted once per span before OpenTelemetry sees it.
+  , spanLimits :: !SpanLimits
+  -- ^ The per-span caps applied as spans record and finalize, before they reach
+  -- the processors. Use 'Effectful.Tracing.SpanLimits.defaultSpanLimits' to match
+  -- the OpenTelemetry SDK defaults.
   }
 
 -- | Interpret 'Tracer' by exporting every recorded span to the configured
@@ -117,7 +122,7 @@ data OtelConfig = OtelConfig
 -- > main = do
 -- >   exporter  <- loadExporterEnvironmentVariables >>= otlpExporter
 -- >   processor <- batchProcessor batchTimeoutConfig exporter
--- >   let config = OtelConfig [processor] "my-service" alwaysOn
+-- >   let config = OtelConfig [processor] "my-service" alwaysOn defaultSpanLimits
 -- >   runEff . runTracerOTel config $ withSpan "request" (pure ())
 runTracerOTel
   :: IOE :> es
@@ -132,7 +137,7 @@ runTracerOTel config action = do
   provider <- liftIO (OTel.createTracerProvider [] OTel.emptyTracerProviderOptions)
   let tracer = OTel.makeTracer provider (instrumentationScope config) emptyTracerOptions
       processors = spanProcessors config
-  interpretTracer (sampler config) (export tracer processors) action
+  interpretTracer (spanLimits config) (sampler config) (export tracer processors) action
     `finally` liftIO (mapM_ spanProcessorForceFlush processors)
 
 -- | 'tracerOptions' with no overrides.

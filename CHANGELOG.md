@@ -258,6 +258,17 @@ context propagation, and the WAI / http-client instrumentation helpers.
   (`parseEnvConfig` takes a lookup function); `readEnvConfig` is the `IO` wrapper
   over the real environment. Unset or unrecognised values fall back to the
   OpenTelemetry defaults rather than failing. No new dependency, no cabal flag.
+- `Effectful.Tracing.SpanLimits`, the OpenTelemetry span-limit guard: a
+  `SpanLimits` record capping the attribute, event, and link counts per span and
+  truncating long string attribute values. Each cap is a `Maybe Int` (`Nothing` is
+  unlimited); `defaultSpanLimits` matches the SDK defaults (128 attributes / events
+  / links, no value-length cap) and `unlimitedSpanLimits` disables every cap. The
+  count caps are enforced as a span records (so an in-flight span cannot grow past
+  the limit), and the pure `applySpanLimits` applies the value-length truncation
+  and link cap at finalization. Every span-opening interpreter now takes limits:
+  `runTracerInMemoryWithLimits` is new (with `runTracerInMemoryWith` defaulting to
+  `defaultSpanLimits`), and `PrettyPrintConfig` and `OtelConfig` each gain a
+  `spanLimits` field. No new dependency, no cabal flag.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

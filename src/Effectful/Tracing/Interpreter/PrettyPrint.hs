@@ -83,6 +83,7 @@ import Effectful.Tracing.Attribute
   )
 import Effectful.Tracing.Effect (Tracer)
 import Effectful.Tracing.Sampler (Sampler, alwaysOn)
+import Effectful.Tracing.SpanLimits (SpanLimits, defaultSpanLimits)
 import Effectful.Tracing.Internal.Clock (Timestamp (Timestamp))
 import Effectful.Tracing.Internal.Ids (SpanId, TraceId, traceIdToHex)
 import Effectful.Tracing.Internal.Live (interpretTracer)
@@ -122,6 +123,9 @@ data PrettyPrintConfig = PrettyPrintConfig
   -- ^ Which spans to print. The \"export\" step here is printing, so 'Effectful.Tracing.Sampler.Drop'
   -- omits a span and both other decisions print it. 'renderTrace' ignores this
   -- field.
+  , spanLimits :: !SpanLimits
+  -- ^ The per-span caps applied as spans record and finalize. 'renderTrace'
+  -- ignores this field.
   }
 
 -- | A reasonable default: no color, attributes and events shown, durations
@@ -135,6 +139,7 @@ defaultPrettyPrintConfig h =
     , showEvents = True
     , timeFormat = DurationOnly
     , sampler = alwaysOn
+    , spanLimits = defaultSpanLimits
     }
 
 -- | Interpret 'Tracer' by rendering each finished trace to the configured
@@ -168,7 +173,7 @@ runTracerPrettyWith
   -> Eff (Tracer : es) a
   -> Eff es a
 runTracerPrettyWith traces config =
-  interpretTracer (sampler config) (flushOnRoot config traces)
+  interpretTracer (spanLimits config) (sampler config) (flushOnRoot config traces)
 
 -- | Accumulate a completed span under its trace id; when the span is a root,
 -- pop the whole trace and render it.

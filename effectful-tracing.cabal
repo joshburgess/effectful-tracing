@@ -125,6 +125,7 @@ library
     Effectful.Tracing.Propagation.Jaeger
     Effectful.Tracing.Sampler
     Effectful.Tracing.SemConv
+    Effectful.Tracing.SpanLimits
     Effectful.Tracing.Testing
     Effectful.Tracing.Internal.Clock
     Effectful.Tracing.Internal.Ids
@@ -207,6 +208,7 @@ test-suite effectful-tracing-test
     Effectful.Tracing.PropagationSpec
     Effectful.Tracing.PropertySpec
     Effectful.Tracing.SamplerSpec
+    Effectful.Tracing.SpanLimitsSpec
     Effectful.Tracing.TestingSpec
     Effectful.Tracing.ThunkSpec
     Effectful.Tracing.TypesSpec

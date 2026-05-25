@@ -80,15 +80,23 @@ import Effectful.Tracing.Sampler
   , SamplingResult (decision, extraAttributes, newTraceState)
   )
 import Effectful.Tracing.SemConv qualified as SemConv
+import Effectful.Tracing.SpanLimits
+  ( SpanLimits (attributeCountLimit, eventCountLimit)
+  , applySpanLimits
+  )
 
 -- | The mutable, accumulating part of an in-flight span. Attributes and events
 -- are stored newest-first and reversed when the span completes, so each emit is
 -- an O(1) cons rather than an O(n) append. The name lives here too (rather than
--- in the immutable 't:ActiveSpan' identity) so 'UpdateName' can replace it.
+-- in the immutable 't:ActiveSpan' identity) so 'UpdateName' can replace it. The
+-- running counts let the count caps (see 'SpanLimits') be enforced as the span
+-- records, in O(1) per emit, so an in-flight span cannot grow past its limit.
 data SpanBuilder = SpanBuilder
   { builderName :: !Text
   , builderAttributes :: ![Attribute]
+  , builderAttributeCount :: !Int
   , builderEvents :: ![Event]
+  , builderEventCount :: !Int
   , builderStatus :: !SpanStatus
   }
 
@@ -125,18 +133,20 @@ data ActiveSpan = ActiveSpan
 -- the span.
 interpretTracer
   :: IOE :> es
-  => Sampler
+  => SpanLimits
+  -- ^ The per-span caps to enforce as spans record and finalize.
+  -> Sampler
   -> (Span -> IO ())
   -- ^ What to do with each completed span. Runs on the thread that closed the
   -- span; keep it cheap and non-blocking.
   -> Eff (Tracer : es) a
   -> Eff es a
-interpretTracer sampler onComplete =
+interpretTracer limits sampler onComplete =
   reinterpret (runReader (Nothing :: Maybe ActiveSpan) . runReader ([] :: [Link])) $ \env -> \case
     WithSpan name args action -> do
       parent <- ask
       pending <- ask
-      active <- openSpan sampler name args parent pending
+      active <- openSpan limits sampler name args parent pending
       Dynamic.localSeqUnlift env $ \unlift -> do
         -- Inside the span the active span is this one and the pending links have
         -- been consumed (a child must not re-link to the cause of its root).
@@ -145,7 +155,7 @@ interpretTracer sampler onComplete =
           generalBracket
             (pure ())
             (\_ exitCase -> do
-                completed <- finalizeSpan active exitCase
+                completed <- finalizeSpan limits active exitCase
                 when (activeDecision active /= Drop) (liftIO (onComplete completed)))
             use
         pure result
@@ -163,18 +173,18 @@ interpretTracer sampler onComplete =
         local (const (Just remote)) (local (const ([] :: [Link])) (unlift action))
     AddAttribute key value ->
       withActive $ \active ->
-        liftIO (modifyIORef' (activeBuilder active) (pushAttributes [Attribute key value]))
+        liftIO (modifyIORef' (activeBuilder active) (pushAttributes limits [Attribute key value]))
     AddAttributes attrs ->
       withActive $ \active ->
-        liftIO (modifyIORef' (activeBuilder active) (pushAttributes attrs))
+        liftIO (modifyIORef' (activeBuilder active) (pushAttributes limits attrs))
     AddEvent name attrs ->
       withActive $ \active -> do
         now <- getTimestamp
-        liftIO (modifyIORef' (activeBuilder active) (pushEvent (Event name now attrs)))
+        liftIO (modifyIORef' (activeBuilder active) (pushEvent limits (Event name now attrs)))
     RecordException err ->
       withActive $ \active -> do
         now <- getTimestamp
-        liftIO (modifyIORef' (activeBuilder active) (pushEvent (exceptionEvent now err)))
+        liftIO (modifyIORef' (activeBuilder active) (pushEvent limits (exceptionEvent now err)))
     SetStatus status ->
       withActive $ \active ->
         liftIO (modifyIORef' (activeBuilder active) (applyStatus status))
@@ -196,7 +206,8 @@ withActive f = ask >>= maybe (pure ()) f
 -- the start time, and seed the builder.
 openSpan
   :: IOE :> es
-  => Sampler
+  => SpanLimits
+  -> Sampler
   -> Text
   -> SpanArguments
   -> Maybe ActiveSpan
@@ -204,7 +215,7 @@ openSpan
   -- ^ Pending "caused by" links, attached only when this span is a root (a span
   -- opened inside a 'WithLinkedRoot' scope); ignored for child spans.
   -> Eff es ActiveSpan
-openSpan sampler name args parent pendingLinks = do
+openSpan limits sampler name args parent pendingLinks = do
   -- Force the projected parent context (not just the @Maybe@ to WHNF). A lazy
   -- @activeContext <$> parent@ leaves @Just (activeContext p)@ as a thunk that
   -- retains the parent's entire 't:ActiveSpan' (and its builder 'IORef') inside
@@ -236,12 +247,18 @@ openSpan sampler name args parent pendingLinks = do
           , spanContextIsRemote = False
           }
   start <- maybe getTimestamp (pure . Timestamp) (startTime args)
+  -- Seed the attributes through the same count cap the emit path uses, so an
+  -- over-budget initial set (span arguments plus sampler extras) is bounded
+  -- here rather than only at finalization.
+  let initialAttributes = capCount (attributeCountLimit limits) (attributes args <> extraAttributes result)
   builder <-
     liftIO . newIORef $
       SpanBuilder
         { builderName = name
-        , builderAttributes = reverse (attributes args <> extraAttributes result)
+        , builderAttributes = reverse initialAttributes
+        , builderAttributeCount = length initialAttributes
         , builderEvents = []
+        , builderEventCount = 0
         , builderStatus = Unset
         }
   pure
@@ -262,7 +279,7 @@ openSpan sampler name args parent pendingLinks = do
 remoteActiveSpan :: IOE :> es => SpanContext -> Eff es ActiveSpan
 remoteActiveSpan context = do
   start <- getTimestamp
-  builder <- liftIO (newIORef (SpanBuilder "" [] [] Unset))
+  builder <- liftIO (newIORef (SpanBuilder "" [] 0 [] 0 Unset))
   pure
     ActiveSpan
       { activeContext = context {spanContextIsRemote = True}
@@ -279,16 +296,17 @@ remoteActiveSpan context = do
 -- an immutable 't:Span'. Runs inside 'generalBracket', so it fires exactly once.
 finalizeSpan
   :: IOE :> es
-  => ActiveSpan
+  => SpanLimits
+  -> ActiveSpan
   -> ExitCase a
   -> Eff es Span
-finalizeSpan active exitCase = do
+finalizeSpan limits active exitCase = do
   end <- getTimestamp
   case exitCase of
     ExitCaseException err ->
       liftIO . modifyIORef' (activeBuilder active) $
         applyStatus (Error (T.pack (displayException err)))
-          . pushEvent (exceptionEvent end err)
+          . pushEvent limits (exceptionEvent end err)
     ExitCaseAbort ->
       liftIO . modifyIORef' (activeBuilder active) $
         applyStatus (Error "span aborted")
@@ -299,28 +317,56 @@ finalizeSpan active exitCase = do
   -- reversed and so fully traversed), so a sink that stores the span (the
   -- in-memory buffer, the pretty-print accumulator) holds a finished value
   -- rather than a thunk retaining this span's builder 'IORef' and 't:ActiveSpan'.
+  -- 'applySpanLimits' is where the value-length truncation and the link cap land
+  -- (the count caps were already enforced as the span recorded).
   pure $!
-    Span
-      { spanContext = activeContext active
-      , spanParentContext = activeParent active
-      , spanName = builderName builder
-      , spanKind = activeKind active
-      , spanStartTime = activeStart active
-      , spanEndTime = end
-      , spanAttributes = reverse (builderAttributes builder)
-      , spanEvents = reverse (builderEvents builder)
-      , spanLinks = activeLinks active
-      , spanStatus = builderStatus builder
-      }
+    applySpanLimits limits $
+      Span
+        { spanContext = activeContext active
+        , spanParentContext = activeParent active
+        , spanName = builderName builder
+        , spanKind = activeKind active
+        , spanStartTime = activeStart active
+        , spanEndTime = end
+        , spanAttributes = reverse (builderAttributes builder)
+        , spanEvents = reverse (builderEvents builder)
+        , spanLinks = activeLinks active
+        , spanStatus = builderStatus builder
+        }
 
--- | Prepend attributes to a builder (stored newest-first).
-pushAttributes :: [Attribute] -> SpanBuilder -> SpanBuilder
-pushAttributes attrs builder =
-  builder {builderAttributes = reverse attrs <> builderAttributes builder}
+-- | Prepend attributes to a builder (stored newest-first), keeping at most the
+-- attribute-count limit. Only the entries that fit the remaining budget are
+-- recorded (the earliest of the batch), so the running count never exceeds the
+-- cap.
+pushAttributes :: SpanLimits -> [Attribute] -> SpanBuilder -> SpanBuilder
+pushAttributes limits attrs builder =
+  builder
+    { builderAttributes = reverse kept <> builderAttributes builder
+    , builderAttributeCount = builderAttributeCount builder + length kept
+    }
+  where
+    kept = case attributeCountLimit limits of
+      Nothing -> attrs
+      Just n -> take (max 0 (n - builderAttributeCount builder)) attrs
 
--- | Prepend an event to a builder (stored newest-first).
-pushEvent :: Event -> SpanBuilder -> SpanBuilder
-pushEvent event builder = builder {builderEvents = event : builderEvents builder}
+-- | Prepend an event to a builder (stored newest-first), unless the event-count
+-- limit has already been reached, in which case the event is dropped (the
+-- earliest events are the ones kept).
+pushEvent :: SpanLimits -> Event -> SpanBuilder -> SpanBuilder
+pushEvent limits event builder =
+  case eventCountLimit limits of
+    Just n | builderEventCount builder >= n -> builder
+    _ ->
+      builder
+        { builderEvents = event : builderEvents builder
+        , builderEventCount = builderEventCount builder + 1
+        }
+
+-- | Keep at most @n@ of a list (the first @n@) when a cap is set; 'Nothing'
+-- keeps everything. Used to bound the initial attribute set at span open.
+capCount :: Maybe Int -> [a] -> [a]
+capCount Nothing = id
+capCount (Just n) = take (max 0 n)
 
 -- | Apply a status transition (see 'transitionStatus').
 applyStatus :: SpanStatus -> SpanBuilder -> SpanBuilder

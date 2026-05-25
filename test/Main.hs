@@ -33,6 +33,7 @@ import Effectful.Tracing.Propagation.JaegerSpec qualified as JaegerSpec
 import Effectful.Tracing.PropagationSpec qualified as PropagationSpec
 import Effectful.Tracing.PropertySpec qualified as PropertySpec
 import Effectful.Tracing.SamplerSpec qualified as SamplerSpec
+import Effectful.Tracing.SpanLimitsSpec qualified as SpanLimitsSpec
 import Effectful.Tracing.TestingSpec qualified as TestingSpec
 import Effectful.Tracing.ThunkSpec qualified as ThunkSpec
 import Effectful.Tracing.TypesSpec qualified as TypesSpec
@@ -72,6 +73,7 @@ main =
           , PrettyPrintSpec.tests
           , PrettyPrintLeakSpec.tests
           , SamplerSpec.tests
+          , SpanLimitsSpec.tests
           , TestingSpec.tests
           , ConcurrentSpec.tests
           , PropagationSpec.tests
