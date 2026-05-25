@@ -220,6 +220,23 @@ activeUserNames conn =
   Pg.query conn "SELECT name FROM users WHERE active = ?" (Only True)
 ```
 
+For `sqlite-simple`, the `sqlite-simple` cabal flag builds
+`Effectful.Tracing.Instrumentation.SqliteSimple` the same way: drop-in `query`,
+`query_`, `execute`, `execute_`, and `executeMany` (the batch runner also records
+`db.operation.batch.size`). The system name is `sqlite`.
+
+```haskell
+import Data.Text (Text)
+import Database.SQLite.Simple (Connection, Only (..))
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Effectful.Tracing.Instrumentation.SqliteSimple qualified as Sqlite
+
+activeUserNames :: (IOE :> es, Tracer :> es) => Connection -> Eff es [Only Text]
+activeUserNames conn =
+  Sqlite.query conn "SELECT name FROM users WHERE active = ?" (Only True)
+```
+
 ## Interoperate with B3 (Zipkin) headers
 
 When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,

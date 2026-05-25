@@ -151,6 +151,11 @@ import Database.PostgreSQL.Simple (Connection, Only (..))
 import Effectful.Tracing.Instrumentation.PostgresqlSimple qualified as Pg
 #endif
 
+#ifdef SQLITE_SIMPLE
+import Database.SQLite.Simple qualified as SqliteDb
+import Effectful.Tracing.Instrumentation.SqliteSimple qualified as Sqlite
+#endif
+
 #ifdef SERVANT
 import Data.Proxy (Proxy (Proxy))
 import Network.Wai (Application)
@@ -253,6 +258,7 @@ docExamples =
     `seq` waiExamples
     `seq` httpClientExamples
     `seq` postgresqlSimpleExamples
+    `seq` sqliteSimpleExamples
     `seq` servantExamples
     `seq` otelExamples
     `seq` ()
@@ -600,6 +606,27 @@ cbActiveUserNames conn =
   Pg.query conn "SELECT name FROM users WHERE active = ?" (Only True)
 #else
 postgresqlSimpleExamples = ()
+#endif
+
+-- sqlite-simple examples (only when built with +sqlite-simple).
+sqliteSimpleExamples :: ()
+#ifdef SQLITE_SIMPLE
+sqliteSimpleExamples =
+  (cbSqliteActiveUserNames :: SqliteDb.Connection -> Eff '[Tracer, IOE] [SqliteDb.Only Text])
+    `seq` (cbSqliteSeedUsers :: SqliteDb.Connection -> Eff '[Tracer, IOE] ())
+    `seq` ()
+
+-- cookbook: traced sqlite-simple query
+cbSqliteActiveUserNames :: (IOE :> es, Tracer :> es) => SqliteDb.Connection -> Eff es [SqliteDb.Only Text]
+cbSqliteActiveUserNames conn =
+  Sqlite.query conn "SELECT name FROM users WHERE active = ?" (SqliteDb.Only True)
+
+-- cookbook: traced sqlite-simple batch insert
+cbSqliteSeedUsers :: (IOE :> es, Tracer :> es) => SqliteDb.Connection -> Eff es ()
+cbSqliteSeedUsers conn =
+  Sqlite.executeMany conn "INSERT INTO users (name) VALUES (?)" [SqliteDb.Only ("a" :: Text), SqliteDb.Only "b"]
+#else
+sqliteSimpleExamples = ()
 #endif
 
 -- servant examples (only when built with +servant).

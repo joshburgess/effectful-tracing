@@ -269,6 +269,15 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `runTracerInMemoryWithLimits` is new (with `runTracerInMemoryWith` defaulting to
   `defaultSpanLimits`), and `PrettyPrintConfig` and `OtelConfig` each gain a
   `spanLimits` field. No new dependency, no cabal flag.
+- `sqlite-simple` database binding. The new `sqlite-simple` cabal flag (off by
+  default) builds `Effectful.Tracing.Instrumentation.SqliteSimple`: drop-in
+  `query`, `query_`, `execute`, `execute_`, and `executeMany` that stay in `Eff`
+  and wrap each call in `withQuerySpan` (system name `sqlite`), recording the
+  parameterized template as `db.query.text` and the leading keyword as
+  `db.operation.name`; `executeMany` also records `db.operation.batch.size` (a
+  new `Effectful.Tracing.SemConv` constant). The flag pulls in `sqlite-simple`
+  (and its bundled SQLite C sources), so it is built in the all-flags CI jobs;
+  the binding is covered by a flag-gated compile mirror.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing

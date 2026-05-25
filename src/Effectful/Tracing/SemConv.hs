@@ -47,6 +47,7 @@ module Effectful.Tracing.SemConv
   , dbOperationName
   , dbCollectionName
   , dbNamespace
+  , dbOperationBatchSize
 
     -- * Exception attributes
   , exceptionType
@@ -128,6 +129,11 @@ dbCollectionName = "db.collection.name"
 -- example @\"orders\"@. (Stable replacement for the pre-stable @db.name@.)
 dbNamespace :: Text
 dbNamespace = "db.namespace"
+
+-- | @db.operation.batch.size@: the number of queries in a batch operation, for
+-- example the number of parameter rows passed to a multi-row @executeMany@.
+dbOperationBatchSize :: Text
+dbOperationBatchSize = "db.operation.batch.size"
 
 -- | @exception.type@: the type or class of an exception, for example
 -- @\"IOException\"@.

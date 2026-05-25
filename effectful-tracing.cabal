@@ -68,6 +68,15 @@ flag postgresql-simple
   default:     False
   manual:      True
 
+flag sqlite-simple
+  description:
+    Build the @sqlite-simple@ tracing wrappers
+    (@Effectful.Tracing.Instrumentation.SqliteSimple@). Off by default so the
+    base package does not depend on @sqlite-simple@ (and its bundled SQLite C
+    sources).
+  default:     False
+  manual:      True
+
 flag servant
   description:
     Build the Servant route-aware tracing middleware
@@ -174,6 +183,10 @@ library
     exposed-modules: Effectful.Tracing.Instrumentation.PostgresqlSimple
     build-depends:   postgresql-simple >=0.6 && <0.8
 
+  if flag(sqlite-simple)
+    exposed-modules: Effectful.Tracing.Instrumentation.SqliteSimple
+    build-depends:   sqlite-simple >=0.4 && <0.5
+
   if flag(secure-ids)
     cpp-options:   -DSECURE_IDS
     build-depends: crypton >=1.0 && <1.2
@@ -265,6 +278,10 @@ test-suite effectful-tracing-test
   if flag(postgresql-simple)
     cpp-options:   -DPOSTGRESQL_SIMPLE
     build-depends: postgresql-simple >=0.6 && <0.8
+
+  if flag(sqlite-simple)
+    cpp-options:   -DSQLITE_SIMPLE
+    build-depends: sqlite-simple >=0.4 && <0.5
 
   -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
   -- only flips the source label so the test output names which byte source was
