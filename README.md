@@ -179,7 +179,10 @@ dependencies):
   with a `MessagingOperation` and run it inside `withMessagingSpan`, which picks
   the span kind from the operation (`producer` / `consumer` / `client`) and
   records the `messaging.*` conventions. `injectMessageHeaders` and
-  `withConsumerSpan` carry the trace across the broker through message headers.
+  `withConsumerSpan` carry the trace across the broker through message headers. A
+  RabbitMQ binding layers on top behind the `amqp` flag
+  (`Effectful.Tracing.Instrumentation.Amqp`): `publishMsgTraced`, `getMsgTraced`,
+  and `withProcessSpan` do the header plumbing over the `amqp` client for you.
 
 See the cookbook recipes "Trace a database query" and "Trace a message producer
 and consumer" for runnable examples.

@@ -86,6 +86,14 @@ flag valiant
   default:     False
   manual:      True
 
+flag amqp
+  description:
+    Build the @amqp@ (RabbitMQ) tracing wrappers
+    (@Effectful.Tracing.Instrumentation.Amqp@). Off by default so the base
+    package does not depend on @amqp@.
+  default:     False
+  manual:      True
+
 flag servant
   description:
     Build the Servant route-aware tracing middleware
@@ -203,6 +211,10 @@ library
       , valiant           >=0.1 && <0.2
       , valiant-effectful >=0.1 && <0.2
 
+  if flag(amqp)
+    exposed-modules: Effectful.Tracing.Instrumentation.Amqp
+    build-depends:   amqp >=0.22 && <0.25
+
   if flag(secure-ids)
     cpp-options:   -DSECURE_IDS
     build-depends: crypton >=1.0 && <1.2
@@ -305,6 +317,12 @@ test-suite effectful-tracing-test
     build-depends:
       , valiant           >=0.1 && <0.2
       , valiant-effectful >=0.1 && <0.2
+
+  if flag(amqp)
+    -- Named AMQP_BINDING, not AMQP: a bare -DAMQP would expand the AMQP token
+    -- inside the Network.AMQP import path and break the parse.
+    cpp-options:   -DAMQP_BINDING
+    build-depends: amqp >=0.22 && <0.25
 
   -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
   -- only flips the source label so the test output names which byte source was

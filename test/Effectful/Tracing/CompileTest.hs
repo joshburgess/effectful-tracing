@@ -171,6 +171,11 @@ import Valiant.Effectful (Valiant)
 import Effectful.Tracing.Instrumentation.Valiant qualified as ValiantT
 #endif
 
+#ifdef AMQP_BINDING
+import Network.AMQP (Ack (Ack), Channel, Message (msgBody), newMsg)
+import Effectful.Tracing.Instrumentation.Amqp qualified as Amqp
+#endif
+
 #ifdef SERVANT
 import Data.Proxy (Proxy (Proxy))
 #ifndef WAI
@@ -279,6 +284,7 @@ docExamples =
     `seq` postgresqlSimpleExamples
     `seq` sqliteSimpleExamples
     `seq` valiantExamples
+    `seq` amqpExamples
     `seq` servantExamples
     `seq` otelExamples
     `seq` ()
@@ -687,6 +693,30 @@ insertUser :: Statement Text ()
 insertUser = mkStatement "INSERT INTO users (name) VALUES ($1)" [25] [] "inline"
 #else
 valiantExamples = ()
+#endif
+
+-- amqp examples (only when built with +amqp).
+amqpExamples :: ()
+#ifdef AMQP_BINDING
+amqpExamples =
+  (cbAmqpPublishOrder :: Channel -> Eff '[Tracer, IOE] (Maybe Int))
+    `seq` (cbAmqpHandleOrder :: Channel -> Eff '[Tracer, IOE] ())
+    `seq` ()
+
+-- cookbook: traced amqp publish
+cbAmqpPublishOrder :: (IOE :> es, Tracer :> es) => Channel -> Eff es (Maybe Int)
+cbAmqpPublishOrder chan =
+  Amqp.publishMsgTraced chan "orders" "orders.created" newMsg {msgBody = "{}"}
+
+-- cookbook: traced amqp receive then process
+cbAmqpHandleOrder :: (IOE :> es, Tracer :> es) => Channel -> Eff es ()
+cbAmqpHandleOrder chan = do
+  received <- Amqp.getMsgTraced chan Ack "orders"
+  case received of
+    Nothing -> pure ()
+    Just (msg, env) -> Amqp.withProcessSpan msg env (pure ())
+#else
+amqpExamples = ()
 #endif
 
 -- servant examples (only when built with +servant).

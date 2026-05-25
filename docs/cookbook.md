@@ -312,6 +312,38 @@ handleOrder message =
     (liftIO (process (messageBody message)))
 ```
 
+### Using the RabbitMQ binding
+
+If you use the `amqp` package, the `amqp` cabal flag builds
+`Effectful.Tracing.Instrumentation.Amqp`, a thin layer over the core that does
+the header plumbing for you. `publishMsgTraced` opens the `producer` span and
+writes the trace context into the message's AMQP headers; `getMsgTraced` opens a
+`receive` span around the poll; and `withProcessSpan` runs your processing inside
+a `process` span that continues the producer's trace, reading the headers off the
+delivered message.
+
+```haskell
+import Data.ByteString.Lazy (ByteString)
+import Effectful (Eff, IOE, (:>))
+import Effectful.Tracing (Tracer)
+import Network.AMQP (Ack (Ack), Channel, msgBody, newMsg)
+import Effectful.Tracing.Instrumentation.Amqp qualified as Amqp
+
+-- producer: publish, with the trace context written into the AMQP headers
+placeOrder :: (IOE :> es, Tracer :> es) => Channel -> ByteString -> Eff es ()
+placeOrder chan body = do
+  _ <- Amqp.publishMsgTraced chan "orders" "orders.created" newMsg {msgBody = body}
+  pure ()
+
+-- consumer: poll, then process under the producer's trace
+handleOrder :: (IOE :> es, Tracer :> es) => Channel -> Eff es ()
+handleOrder chan = do
+  received <- Amqp.getMsgTraced chan Ack "orders"
+  case received of
+    Nothing -> pure ()
+    Just (msg, env) -> Amqp.withProcessSpan msg env (process (msgBody msg))
+```
+
 ## Interoperate with B3 (Zipkin) headers
 
 When the other side of a hop speaks B3 rather than W3C Trace Context (Zipkin,

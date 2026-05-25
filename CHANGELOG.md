@@ -308,6 +308,14 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues.
   as a remote parent on the consumer side. The span is named `{operation}
   {destination}` for low cardinality. Adds the `messaging.*` keys to
   `Effectful.Tracing.SemConv`; covered by `MessagingSpec` and a compile mirror.
+- `amqp` (RabbitMQ) messaging binding. The new `amqp` cabal flag (off by default)
+  builds `Effectful.Tracing.Instrumentation.Amqp`, which layers on the messaging
+  core: `publishMsgTraced` opens a `producer` span and writes the trace context
+  into the message's AMQP headers, `getMsgTraced` opens a `receive` span around a
+  poll, and `withProcessSpan` runs message processing inside a `process` span that
+  continues the producer's trace from those headers. `messageHeaders` reads the
+  text headers off a message. The flag pulls in `amqp`, so it is built in the
+  all-flags CI jobs; the binding is covered by a flag-gated compile mirror.
 - `Effectful.Tracing.Testing`, a one-stop module for asserting on traces in your
   own test suite. It re-exports the in-memory capture interpreter
   (`runTracerInMemory`, `newCapturedSpans`, `readCapturedSpans`) and the existing
