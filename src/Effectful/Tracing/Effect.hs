@@ -40,6 +40,7 @@ module Effectful.Tracing.Effect
   , addEvent
   , recordException
   , setStatus
+  , updateName
   , getActiveSpan
 
     -- * Status transitions
@@ -80,6 +81,7 @@ data Tracer :: Effect where
   AddEvent :: Text -> [Attribute] -> Tracer m ()
   RecordException :: SomeException -> Tracer m ()
   SetStatus :: SpanStatus -> Tracer m ()
+  UpdateName :: Text -> Tracer m ()
   GetActiveSpan :: Tracer m (Maybe SpanContext)
 
 type instance DispatchOf Tracer = Dynamic
@@ -220,6 +222,15 @@ recordException = send . RecordException
 -- > setStatus (Error "upstream timeout")
 setStatus :: (HasCallStack, Tracer :> es) => SpanStatus -> Eff es ()
 setStatus = send . SetStatus
+
+-- | Replace the active span's name. This is OpenTelemetry's @Span.updateName@:
+-- useful when the final, low-cardinality name is only known after the span has
+-- opened, such as a server span that learns its matched route template once the
+-- routing layer has run. No-op if there is no active span.
+--
+-- > updateName "GET /users/{id}"
+updateName :: (HasCallStack, Tracer :> es) => Text -> Eff es ()
+updateName = send . UpdateName
 
 -- | The active span's context, or 'Nothing' if there is no active span.
 --

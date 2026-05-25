@@ -44,6 +44,7 @@ import Effectful.Tracing
   , spanParentContext
   , spanStartTime
   , spanStatus
+  , updateName
   , withSpan
   )
 import Effectful.Tracing.Interpreter.InMemory
@@ -131,6 +132,27 @@ tests =
         length spans @?= 1
         assertBool "the real span kept its attribute" (hasAttribute "k" s)
         assertBool "no orphan attribute leaked onto the real span" (not (hasAttribute "orphan" s))
+    , testCase "updateName replaces the active span's name" $ do
+        spans <- captureSpans (withSpan "provisional" (updateName "GET /users/{id}"))
+        case spans of
+          [s] -> spanName s @?= "GET /users/{id}"
+          _ -> assertBool "expected exactly one span" False
+    , testCase "updateName only renames the lexically-current span" $ do
+        spans <-
+          captureSpans $
+            withSpan "outer" $ do
+              withSpan "inner" (updateName "renamed-inner")
+              updateName "renamed-outer"
+        outer <- expectSpan "renamed-outer" spans
+        inner <- expectSpan "renamed-inner" spans
+        childrenOf outer spans @?= [inner]
+    , testCase "updateName with no active span is a silent no-op" $ do
+        spans <-
+          captureSpans $ do
+            updateName "orphan"
+            withSpan "real" (pure ())
+        _ <- expectSpan "real" spans
+        length spans @?= 1
     , testProperty "captured spans form a valid forest" prop_validForest
     ]
 

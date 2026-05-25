@@ -30,6 +30,7 @@ import Effectful.Tracing.Effect
       , GetActiveSpan
       , RecordException
       , SetStatus
+      , UpdateName
       , WithLinkedRoot
       , WithRemoteParent
       , WithSpan
@@ -53,4 +54,5 @@ runTracerNoOp = interpret $ \env -> \case
   AddEvent _ _ -> pure ()
   RecordException _ -> pure ()
   SetStatus _ -> pure ()
+  UpdateName _ -> pure ()
   GetActiveSpan -> pure Nothing

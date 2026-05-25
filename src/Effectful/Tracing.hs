@@ -26,6 +26,7 @@ module Effectful.Tracing
   , addEvent
   , recordException
   , setStatus
+  , updateName
   , getActiveSpan
   , SpanArguments (..)
   , defaultSpanArguments
@@ -108,6 +109,7 @@ import Effectful.Tracing.Effect
   , recordException
   , setStatus
   , transitionStatus
+  , updateName
   , withLinkedRoot
   , withRemoteParent
   , withSpan

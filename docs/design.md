@@ -186,8 +186,9 @@ transitionStatus :: SpanStatus -> SpanStatus -> SpanStatus
 
 ### Emitting with no active span is a silent no-op
 
-`addAttribute`, `addAttributes`, `addEvent`, `recordException`, and `setStatus`
-called outside any span are silent no-ops (matching OTel's no-op span); they
+`addAttribute`, `addAttributes`, `addEvent`, `recordException`, `setStatus`, and
+`updateName` called outside any span are silent no-ops (matching OTel's no-op
+span); they
 never throw, and `getActiveSpan` returns `Nothing`. This is what lets you put a
 `Tracer` constraint on a function and trace it from a caller that may or may not
 be inside a span.

@@ -53,6 +53,7 @@ import Effectful.Tracing.Effect
       , GetActiveSpan
       , RecordException
       , SetStatus
+      , UpdateName
       , WithLinkedRoot
       , WithRemoteParent
       , WithSpan
@@ -82,9 +83,11 @@ import Effectful.Tracing.SemConv qualified as SemConv
 
 -- | The mutable, accumulating part of an in-flight span. Attributes and events
 -- are stored newest-first and reversed when the span completes, so each emit is
--- an O(1) cons rather than an O(n) append.
+-- an O(1) cons rather than an O(n) append. The name lives here too (rather than
+-- in the immutable 't:ActiveSpan' identity) so 'UpdateName' can replace it.
 data SpanBuilder = SpanBuilder
-  { builderAttributes :: ![Attribute]
+  { builderName :: !Text
+  , builderAttributes :: ![Attribute]
   , builderEvents :: ![Event]
   , builderStatus :: !SpanStatus
   }
@@ -95,7 +98,6 @@ data SpanBuilder = SpanBuilder
 data ActiveSpan = ActiveSpan
   { activeContext :: !SpanContext
   , activeParent :: !(Maybe SpanContext)
-  , activeName :: !Text
   , activeKind :: !SpanKind
   , activeStart :: !Timestamp
   , activeLinks :: ![Link]
@@ -176,6 +178,9 @@ interpretTracer sampler onComplete =
     SetStatus status ->
       withActive $ \active ->
         liftIO (modifyIORef' (activeBuilder active) (applyStatus status))
+    UpdateName name ->
+      withActive $ \active ->
+        liftIO (modifyIORef' (activeBuilder active) (\b -> b {builderName = name}))
     GetActiveSpan -> fmap activeContext <$> ask
 
 -- | Run an action against the active span, or do nothing if there is none.
@@ -234,7 +239,8 @@ openSpan sampler name args parent pendingLinks = do
   builder <-
     liftIO . newIORef $
       SpanBuilder
-        { builderAttributes = reverse (attributes args <> extraAttributes result)
+        { builderName = name
+        , builderAttributes = reverse (attributes args <> extraAttributes result)
         , builderEvents = []
         , builderStatus = Unset
         }
@@ -242,7 +248,6 @@ openSpan sampler name args parent pendingLinks = do
     ActiveSpan
       { activeContext = context
       , activeParent = parentContext
-      , activeName = name
       , activeKind = kind args
       , activeStart = start
       , activeLinks = spanLinks
@@ -257,12 +262,11 @@ openSpan sampler name args parent pendingLinks = do
 remoteActiveSpan :: IOE :> es => SpanContext -> Eff es ActiveSpan
 remoteActiveSpan context = do
   start <- getTimestamp
-  builder <- liftIO (newIORef (SpanBuilder [] [] Unset))
+  builder <- liftIO (newIORef (SpanBuilder "" [] [] Unset))
   pure
     ActiveSpan
       { activeContext = context {spanContextIsRemote = True}
       , activeParent = Nothing
-      , activeName = ""
       , activeKind = Internal
       , activeStart = start
       , activeLinks = []
@@ -299,7 +303,7 @@ finalizeSpan active exitCase = do
     Span
       { spanContext = activeContext active
       , spanParentContext = activeParent active
-      , spanName = activeName active
+      , spanName = builderName builder
       , spanKind = activeKind active
       , spanStartTime = activeStart active
       , spanEndTime = end

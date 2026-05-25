@@ -254,6 +254,11 @@ context propagation, and the WAI / http-client instrumentation helpers.
   `[(Text, Text)]` with no logging-library dependency and no cabal flag, so they
   drop into `co-log`, `katip`, `fast-logger`, or a bare handle identically, and
   return the empty / `Nothing` case cleanly when no span is in scope.
+- `updateName`, a new `Tracer` operation that replaces the active span's name
+  after it has opened (OpenTelemetry's `Span.updateName`). It is the building block
+  for naming a server span with its matched route template, which is only known
+  once routing has run; like the other annotating operations it is a no-op when no
+  span is active.
 - Database instrumentation. `Effectful.Tracing.Instrumentation.Database` is a
   framework-agnostic core (always built, no new dependency): describe a call with
   a `DatabaseQuery` and run it inside `withQuerySpan`, which opens a `client`-kind
