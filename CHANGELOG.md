@@ -29,10 +29,10 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   to `>=4.18` (with `bytestring`/`text` lower bounds widened to match), and
   `foldl'` is imported from `Data.List` on bases before 4.20, where it is not yet
   re-exported from `Prelude`. CI now runs the build-and-test job across all three
-  compilers, adds a job that builds and tests with every cabal flag enabled
-  (`otel`, `wai`, `http-client`, `secure-ids`), and gates Haddock on broken
-  doc-links. No `cabal.project.freeze` is committed, so each compiler solves its
-  own consistent dependency set.
+  compilers, adds a job that builds and tests with every optional cabal flag
+  enabled (the set grew as later flags landed; see those entries), and gates
+  Haddock on broken doc-links. No `cabal.project.freeze` is committed, so each
+  compiler solves its own consistent dependency set.
 - Two release-hardening CI jobs. A `publish-readiness` job runs `cabal check`
   (the same gate Hackage applies on upload) and then builds the library and
   tests from a `cabal sdist` tarball rather than the working tree, proving the
