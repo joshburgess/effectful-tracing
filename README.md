@@ -15,6 +15,31 @@ keeps the API clean. The library does not reimplement the OpenTelemetry wire
 format: it compiles down to `hs-opentelemetry` for real export and ships several
 other interpreters (no-op, in-memory, pretty-print) for testing and development.
 
+## Why this over hs-opentelemetry directly?
+
+If you are already on `effectful`, this library is the more natural fit. The
+differences are about where the seams sit, not about what gets exported:
+
+- **The current span is lexical, not thread-local.** `hs-opentelemetry` tracks
+  the active span through an implicit context that you propagate by hand across
+  thread and async boundaries. Here a span is a scoped higher-order effect, so
+  "the current span" is exactly the lexically enclosing `withSpan` and the
+  compiler tracks it for you. That removes the most common source of orphaned or
+  mis-parented spans.
+- **The backend is an interpreter you choose at the call site.** The same
+  `Tracer`-using code runs under the no-op, in-memory, pretty-print, or
+  OpenTelemetry interpreter with no change. You get a real trace tree on stderr
+  in development and assertable spans in tests without standing up a collector,
+  and you swap in `runTracerOTel` for production.
+- **It composes as an `effectful` effect.** `Tracer` sits alongside your other
+  effects with an ordinary `Tracer :> es` constraint, rather than threading a
+  reader of OpenTelemetry context through your stack.
+
+It is not a reimplementation of the wire format: real export still goes through
+`hs-opentelemetry-sdk`, and this library's ids and sampler stay the source of
+truth. If you are not using `effectful`, depending on `hs-opentelemetry`
+directly is the simpler choice.
+
 > Status: preparing the first release (`0.1.0.0`). The planned interpreters
 > (no-op, in-memory, pretty-print, OpenTelemetry); W3C Trace Context, B3, and
 > Jaeger propagation (composable, and configurable from `OTEL_` environment
@@ -26,8 +51,30 @@ other interpreters (no-op, in-memory, pretty-print) for testing and development.
 
 ## Install
 
-Not yet released to Hackage. (Install snippet will go here once `0.1.0.0` is
-published.)
+Add `effectful-tracing` to your project's dependencies. In a `.cabal` file:
+
+```cabal
+build-depends:
+  , effectful-tracing >=0.1 && <0.2
+```
+
+The base package brings in only `effectful` and a small set of core
+dependencies. The integrations (OpenTelemetry export, the WAI / http-client /
+Servant helpers, the database driver bindings, and the RabbitMQ binding) each
+live behind a cabal flag that is off by default, so nothing pulls in a web,
+database, or OpenTelemetry stack unless you ask for it. Turn a flag on by naming
+it in `cabal.project`:
+
+```cabal
+package effectful-tracing
+  flags: +otel +wai +http-client
+```
+
+The available flags are `otel`, `wai`, `http-client`, `servant`,
+`postgresql-simple`, `sqlite-simple`, `valiant`, `amqp`, and `secure-ids`. The
+framework-agnostic database and messaging cores
+(`Effectful.Tracing.Instrumentation.Database` and `.Messaging`) are always
+built and need no flag.
 
 ## Quick start
 
@@ -197,6 +244,43 @@ sampler as the source of truth and translates each finished span into an
 at any OTLP collector (Jaeger, Tempo, the OpenTelemetry Collector). The
 [tutorial](docs/tutorial.md) walks through wiring the OTLP exporter and bringing
 up a local Jaeger with `docker compose`.
+
+## Troubleshooting
+
+**My spans come out flat instead of nested.** A span nests under another only
+when the outer one is the active span at the point the inner `withSpan` runs,
+and "active" is lexical. The usual cause is a boundary where the code drops back
+into plain `IO`: for example a WAI `Application` or a callback that runs outside
+the `Eff` scope cannot see a `Tracer` span opened in `Eff`. Run the handler in
+`Eff` (through the unlift you passed to the middleware) so the server span is
+still the active span when the inner work runs. See "Instrumenting a web
+service" above.
+
+**An outbound call starts its own trace instead of joining the request's.**
+`httpLbsTraced` opens a `client` span as a child of whatever span is active when
+it runs. If no span is active (the call happens after the server span's scope
+has closed, or in a thread that never entered `Eff`), it has nothing to attach
+to and begins a fresh root trace. Make the call inside the request handler's
+`Eff` scope, with the server span still open, so the `client` span becomes its
+child and the `traceparent` header continues the same trace downstream.
+
+**Nothing shows up in my collector (or in pretty-print output).** Check, in
+order: (1) the interpreter. `runTracerNoOp` records nothing by design. Use
+`runTracerPretty`, the in-memory interpreter, or `runTracerOTel`. (2) The flag.
+`runTracerOTel` only exists when the package is built with `+otel`, and the WAI
+/ http-client / Servant helpers need their flags too. A missing flag means the
+module is not in scope. (3) The sampler. A low sampling ratio drops most spans
+before export. Set the sampler to always-on while you are confirming the
+pipeline works, then dial it back. (4) For OpenTelemetry export specifically,
+that you actually supplied a `SpanProcessor`/exporter pointed at your collector;
+`runTracerOTel` exports through the processors you give it and nowhere else.
+
+**Trace context is not crossing a message broker.** Headers only carry the
+context if you inject on publish and extract on consume. Use
+`injectMessageHeaders` (or the `amqp` binding's `publishMsgTraced`) when sending
+and `withConsumerSpan` / `withProcessSpan` when receiving. A consumer that opens
+a plain `withSpan` instead will start a new trace rather than continuing the
+producer's.
 
 ## Learning more
 
