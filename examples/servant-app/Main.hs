@@ -37,6 +37,7 @@ import Effectful.Tracing
 import Effectful.Tracing.Instrumentation.HttpClient (httpLbsTraced)
 import Effectful.Tracing.Instrumentation.Wai (traceMiddleware)
 import Effectful.Tracing.Interpreter.OpenTelemetry (OtelConfig (..), runTracerOTel)
+import Effectful.Tracing.SpanLimits (defaultSpanLimits)
 
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager, parseRequest)
 import Network.Wai.Handler.Warp qualified as Warp
@@ -85,6 +86,7 @@ main = do
           { spanProcessors = [processor]
           , instrumentationScope = "servant-app"
           , sampler = alwaysOn
+          , spanLimits = defaultSpanLimits
           }
   runEff . runTracerOTel config $
     withEffToIO (ConcUnlift Persistent Unlimited) $ \runInIO -> do
