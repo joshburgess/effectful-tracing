@@ -1,0 +1,8 @@
+-- Build this example against the in-tree effectful-tracing, with the messaging,
+-- database, and OpenTelemetry flags turned on.
+packages:
+  .
+  ../../
+
+package effectful-tracing
+  flags: +otel +amqp +postgresql-simple

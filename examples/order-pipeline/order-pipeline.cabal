@@ -1,0 +1,24 @@
+cabal-version:      3.0
+name:               order-pipeline
+version:            0
+synopsis:           effectful-tracing database + messaging example (not published)
+build-type:         Simple
+
+executable order-pipeline
+  main-is:          Main.hs
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    OverloadedStrings
+
+  ghc-options:      -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:
+    , amqp
+    , base
+    , bytestring
+    , effectful
+    , effectful-tracing
+    , hs-opentelemetry-exporter-otlp
+    , hs-opentelemetry-sdk
+    , postgresql-simple
+    , text

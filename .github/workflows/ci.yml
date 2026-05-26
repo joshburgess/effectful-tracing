@@ -170,6 +170,39 @@ jobs:
         working-directory: examples/servant-app
         run: cabal build all
 
+  example-db-messaging:
+    name: build db + messaging example (GHC 9.10.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GHC and cabal
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: "9.10.3"
+          cabal-version: "3.14.2.0"
+
+      # The postgresql-simple flag pulls in postgresql-libpq, which needs the
+      # libpq headers and pg_config at build time.
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
+      - name: Cache cabal store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/state/cabal/store
+          key: ${{ runner.os }}-ghc9.10.3-example-db-messaging-${{ hashFiles('examples/order-pipeline/order-pipeline.cabal', 'effectful-tracing.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc9.10.3-example-db-messaging-
+
+      # The example has its own cabal.project pointing at the in-tree library
+      # (with +otel +amqp +postgresql-simple), so building it here proves the
+      # database and messaging bindings still compile against the current API.
+      # The build needs no running broker or database, only the Haskell deps.
+      - name: Build example
+        working-directory: examples/order-pipeline
+        run: cabal build all
+
   local-examples:
     name: build local-dev examples (GHC 9.10.3)
     runs-on: ubuntu-latest

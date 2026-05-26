@@ -233,7 +233,10 @@ dependencies):
   and `withProcessSpan` do the header plumbing over the `amqp` client for you.
 
 See the cookbook recipes "Trace a database query" and "Trace a message producer
-and consumer" for runnable examples.
+and consumer" for the code, and [`examples/order-pipeline`](examples/order-pipeline)
+for a runnable version: a producer and consumer that join into one distributed
+trace across RabbitMQ, with the consumer writing to PostgreSQL inside the
+continued trace, all brought up with `docker compose`.
 
 ## Exporting to OpenTelemetry
 
@@ -296,6 +299,9 @@ producer's.
   history, phase by phase, behind that design.
 - [`examples/servant-app`](examples/servant-app): an end-to-end Servant service
   whose inbound and outbound spans join into one distributed trace in Jaeger.
+- [`examples/order-pipeline`](examples/order-pipeline): a two-process order
+  pipeline (RabbitMQ producer and consumer, PostgreSQL writes) whose spans join
+  into one trace across the broker, brought up with `docker compose`.
 - [`examples/local-dev`](examples/local-dev): two small programs that need no
   collector: a worker loop (one span per job, interpreter chosen at runtime,
   error recording, a linked background trace) and a custom-sampler demo.
