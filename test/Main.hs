@@ -55,6 +55,10 @@ import Effectful.Tracing.Instrumentation.HttpClientSpec qualified as HttpClientS
 import Effectful.Tracing.Instrumentation.ServantSpec qualified as ServantSpec
 #endif
 
+#ifdef AMQP_BINDING
+import Effectful.Tracing.Instrumentation.AmqpSpec qualified as AmqpSpec
+#endif
+
 main :: IO ()
 main =
   defaultMain
@@ -92,6 +96,7 @@ main =
             <> waiTests
             <> httpClientTests
             <> servantTests
+            <> amqpTests
         )
     )
 
@@ -125,4 +130,12 @@ servantTests :: [TestTree]
 servantTests = [ServantSpec.tests]
 #else
 servantTests = []
+#endif
+
+-- | The RabbitMQ binding tests, present only when built with @+amqp@.
+amqpTests :: [TestTree]
+#ifdef AMQP_BINDING
+amqpTests = [AmqpSpec.tests]
+#else
+amqpTests = []
 #endif

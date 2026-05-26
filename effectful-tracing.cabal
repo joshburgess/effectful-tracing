@@ -322,6 +322,7 @@ test-suite effectful-tracing-test
     -- Named AMQP_BINDING, not AMQP: a bare -DAMQP would expand the AMQP token
     -- inside the Network.AMQP import path and break the parse.
     cpp-options:   -DAMQP_BINDING
+    other-modules: Effectful.Tracing.Instrumentation.AmqpSpec
     build-depends: amqp >=0.22 && <0.25
 
   -- The id generator tests (Effectful.Tracing.IdGenSpec) run in both modes; this
