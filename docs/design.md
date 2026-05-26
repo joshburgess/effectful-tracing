@@ -41,7 +41,7 @@ not change when you switch.
 The library is built in three layers, each depending only on the one below it:
 
 ```
-                 instrumentation helpers          (WAI, http-client)
+  instrumentation:  WAI · http-client · Servant · database · messaging
                           │
    interpreters:  no-op · in-memory · pretty-print · OpenTelemetry
                           │
@@ -388,8 +388,12 @@ Two consequences worth knowing:
 
 ## Instrumentation helpers
 
-Two optional helpers cover the common HTTP seams, each behind a cabal flag (off
-by default) so the base package never pulls in a web stack.
+A set of helpers cover the common seams where work crosses a boundary: the two
+HTTP edges (a WAI server, an http-client caller), the database client side, and
+message queues. The web and SQL-driver bindings each sit behind a cabal flag (off
+by default) so the base package never pulls in a web stack or a driver's C
+dependency; the framework-agnostic database and messaging cores are always built,
+because they add no dependencies of their own.
 
 ### WAI middleware (`wai` flag)
 
@@ -433,6 +437,47 @@ the hop, provided the handler runs *inside* `Eff` so the server span is active
 when the outbound call fires. The attribute sets follow the stable OpenTelemetry
 HTTP semantic conventions, with the keys collected in `Effectful.Tracing.SemConv`.
 
+### Servant server instrumentation (`servant` flag)
+
+`Effectful.Tracing.Instrumentation.Servant` layers route awareness on top of the
+WAI middleware. A `WithSpanName` combinator annotates each endpoint with its route
+*template* (`/users/{id}`), transparent to the handler, and `traceServantMiddleware`
+renames the server span to `"{method} {route}"` and records `http.route` once
+routing has matched. This is the structured form of `traceMiddlewareWith`: the
+route template comes from the API type rather than from a hand-written extractor.
+
+### Database and messaging (framework-agnostic cores plus driver bindings)
+
+The database and message-queue client seams follow a different split from the
+HTTP helpers: a **dependency-free core that is always built**, plus thin
+**driver bindings behind their own flags**. The core carries the convention
+mapping (which is reusable across every driver); a binding only adapts one
+client's runners to it.
+
+- `Effectful.Tracing.Instrumentation.Database` describes a call with a
+  `DatabaseQuery` and runs it inside `withQuerySpan`, a `client`-kind span named
+  `"{operation} {collection}"` carrying the stable `db.*` attributes.
+  `inferOperationName` takes the operation from the statement's leading keyword
+  (it does not parse SQL). Driver bindings layer on top:
+  `Effectful.Tracing.Instrumentation.PostgresqlSimple` (flag `postgresql-simple`),
+  `Effectful.Tracing.Instrumentation.SqliteSimple` (flag `sqlite-simple`), and
+  `Effectful.Tracing.Instrumentation.Valiant` (flag `valiant`), each a drop-in for
+  the driver's own runners that fills the `DatabaseQuery` from the statement.
+- `Effectful.Tracing.Instrumentation.Messaging` describes a publish or consume
+  with a `MessagingOperation` and runs it inside `withMessagingSpan`, which picks
+  the span kind from the operation type (`producer` for `Send` / `Create`,
+  `consumer` for `Receive` / `Process`, `client` for `Settle`) and records the
+  `messaging.*` conventions. The trace crosses the broker through text message
+  headers: `injectMessageHeaders` on the producer, `withConsumerSpan` (or
+  `extractMessageHeaders`) on the consumer.
+  `Effectful.Tracing.Instrumentation.Amqp` (flag `amqp`) is the concrete RabbitMQ
+  binding over the `amqp` client, doing that header plumbing for you with
+  `publishMsgTraced`, `getMsgTraced`, and `withProcessSpan`.
+
+Because the bindings all need a live server, they are tested through the
+always-built core (in-memory) plus a compile-only mirror; only their broker-free
+pure helpers (such as the AMQP header decoder) are exercised at runtime.
+
 ## Strictness posture
 
 The library is strict by default: `StrictData` and `-funbox-strict-fields` are on
@@ -470,11 +515,25 @@ interpreters live in their own modules:
 - `Effectful.Tracing.Interpreter.OpenTelemetry` (flag `otel`)
 - `Effectful.Tracing.Instrumentation.Wai` (flag `wai`)
 - `Effectful.Tracing.Instrumentation.HttpClient` (flag `http-client`)
+- `Effectful.Tracing.Instrumentation.Servant` (flag `servant`)
+- `Effectful.Tracing.Instrumentation.Database` (always built) plus its driver
+  bindings `PostgresqlSimple` (flag `postgresql-simple`), `SqliteSimple` (flag
+  `sqlite-simple`), and `Valiant` (flag `valiant`)
+- `Effectful.Tracing.Instrumentation.Messaging` (always built) plus its RabbitMQ
+  binding `Amqp` (flag `amqp`)
+
+Several capability modules round out the public surface, all always built:
+`Effectful.Tracing.Sampler`, `Effectful.Tracing.SpanLimits`,
+`Effectful.Tracing.Propagation` (with the `.B3`, `.Jaeger`, `.Baggage`, and
+`.Composite` formats), `Effectful.Tracing.Baggage`, `Effectful.Tracing.EnvConfig`,
+`Effectful.Tracing.Concurrent`, `Effectful.Tracing.Log`, and
+`Effectful.Tracing.Testing`.
 
 `Effectful.Tracing.Internal.*` modules are exposed so power users and the bridge
 can reach them, but they are not re-exported and carry no stability promise. The
-heavier dependencies (OpenTelemetry, WAI, http-client) sit behind the manual
-cabal flags above, all off by default, so the base package stays light.
+heavier dependencies (OpenTelemetry, WAI, http-client, Servant, the SQL drivers,
+and amqp) sit behind the manual cabal flags above, all off by default, so the
+base package stays light.
 
 ## See also
 
