@@ -1,7 +1,7 @@
 # effectful-tracing
 
 [![CI](https://github.com/joshburgess/effectful-tracing/actions/workflows/ci.yml/badge.svg)](https://github.com/joshburgess/effectful-tracing/actions/workflows/ci.yml)
-[![Hackage](https://img.shields.io/badge/hackage-not%20yet%20released-lightgrey.svg)](https://hackage.haskell.org/package/effectful-tracing)
+[![Hackage](https://img.shields.io/hackage/v/effectful-tracing.svg)](https://hackage.haskell.org/package/effectful-tracing)
 [![License: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 Tracing as a scoped effect for Haskell, built natively on
@@ -40,7 +40,7 @@ It is not a reimplementation of the wire format: real export still goes through
 truth. If you are not using `effectful`, depending on `hs-opentelemetry`
 directly is the simpler choice.
 
-> Status: preparing the first release (`0.1.0.0`). The planned interpreters
+> Status: first release (`0.1.0.0`) is on Hackage. The interpreters
 > (no-op, in-memory, pretty-print, OpenTelemetry); W3C Trace Context, B3, and
 > Jaeger propagation (composable, and configurable from `OTEL_` environment
 > variables); sampling; span limits; async context propagation; baggage; a
