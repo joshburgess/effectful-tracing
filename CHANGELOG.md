@@ -4,7 +4,7 @@ All notable changes to `effectful-tracing` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to be PVP-compliant.
 
-## 0.1.0.0 (unreleased)
+## 0.1.0.0 - 2026-05-26
 
 The first release: the `Tracer` effect; four interpreters (no-op, in-memory,
 pretty-print, OpenTelemetry); W3C Trace Context, B3, and Jaeger propagation
