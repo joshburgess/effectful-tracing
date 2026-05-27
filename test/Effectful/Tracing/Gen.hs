@@ -2,8 +2,8 @@
 -- Module      : Effectful.Tracing.Gen
 -- Description : Hedgehog generators for the core data model.
 --
--- Generators for every public type in the Phase 1 data model, used by the
--- property tests and reusable by later phases.
+-- Generators for every public type in the core data model, used by the
+-- property tests.
 module Effectful.Tracing.Gen
   ( genTraceId
   , genSpanId

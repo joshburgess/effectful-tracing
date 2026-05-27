@@ -133,7 +133,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   in place; the mirrors reproduce their API usage instead, stubbing the
   placeholder types once. Examples that need a cabal flag (`wai`, `http-client`,
   `otel`) are guarded with CPP so they are checked by the all-flags CI job.
-- Documentation and example (Phase 10): a guided [tutorial](docs/tutorial.md)
+- Documentation and example: a guided [tutorial](docs/tutorial.md)
   from a pretty-printed trace to OpenTelemetry export against a local Jaeger, a
   [cookbook](docs/cookbook.md) of focused recipes (trace an existing function,
   attach structured fields, sample but keep what matters, connect inbound and
@@ -148,7 +148,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   spans, ~1% of routine spans" custom sampler through the in-memory interpreter.
   The README's supported-GHC list is also corrected to name all three tested
   compilers (9.6.7 / 9.8.4 / 9.10.3) rather than only 9.10.3.
-- http-client tracing wrapper (Phase 9), behind the new `http-client` cabal flag
+- http-client tracing wrapper, behind the new `http-client` cabal flag
   (off by default, so the base package does not depend on `http-client`):
   `Effectful.Tracing.Instrumentation.HttpClient` provides `httpLbsTraced`, which
   runs an `http-client` request inside a `client`-kind span. It injects the
@@ -165,7 +165,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
 - New `http-client` cabal flag gating the wrapper and its `http-client`
   dependency (`>=0.7 && <0.8`) for the library; the test suite additionally uses
   `wai` and `warp` (`>=3.3 && <3.5`) for the loopback server.
-- WAI tracing middleware (Phase 9), behind the new `wai` cabal flag (off by
+- WAI tracing middleware, behind the new `wai` cabal flag (off by
   default, so the base package does not depend on `wai`):
   `Effectful.Tracing.Instrumentation.Wai` provides `traceMiddleware` (and
   `traceMiddlewareWith` for custom span naming), which wraps each request in a
@@ -182,7 +182,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   mapping, remote-parent continuation, and exception handling).
 - New `wai` cabal flag gating the WAI middleware and its `wai` dependency
   (`>=3.2 && <3.3`), for both the library and the test suite.
-- OpenTelemetry export interpreter (Phase 8), behind the new `otel` cabal flag
+- OpenTelemetry export interpreter, behind the new `otel` cabal flag
   (off by default, so the base package carries no OpenTelemetry dependencies):
   `Effectful.Tracing.Interpreter.OpenTelemetry` provides `runTracerOTel`, which
   interprets `Tracer` by running the shared span lifecycle and, as each span
@@ -201,7 +201,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   dependencies: `clock` (`>=0.8 && <0.9`) and `hs-opentelemetry-api`
   (`==0.3.1.0`) for the library, and `async` plus `hs-opentelemetry-api` for the
   test suite.
-- W3C Trace Context propagation (Phase 8): `Effectful.Tracing.Propagation`
+- W3C Trace Context propagation: `Effectful.Tracing.Propagation`
   carries a trace across a process boundary using the standard `traceparent`
   and `tracestate` headers, with no dependency on an OpenTelemetry SDK.
   `injectContext` serializes the active span's context into a header list for an
@@ -383,7 +383,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   180-entry cap (`maxBaggageEntries`). It is built directly against the effect
   (no SDK dependency, no new dependency, no cabal flag) and the parser is covered
   by a fuzz totality property.
-- Async context propagation (Phase 7): `Effectful.Tracing.Concurrent` with
+- Async context propagation: `Effectful.Tracing.Concurrent` with
   span-propagating wrappers around effectful's concurrency. `forkInstrumented`,
   `asyncInstrumented`, `concurrentlyInstrumented`, and
   `forConcurrentlyInstrumented` spawn work that inherits the launching span as
@@ -402,7 +402,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
 - New library dependency on the full `effectful` package (for
   `Effectful.Concurrent` and `Effectful.Concurrent.Async`), pinned to
   `==2.6.1.0` alongside `effectful-core`.
-- Sampling (Phase 6): `Effectful.Tracing.Sampler` with a `Sampler`, the
+- Sampling: `Effectful.Tracing.Sampler` with a `Sampler`, the
   `SamplingDecision` (`Drop` / `RecordOnly` / `RecordAndSample`),
   `SamplingResult`, and `SamplerInput` data model, plus the four built-in
   samplers from the OpenTelemetry specification: `alwaysOn`, `alwaysOff`,
@@ -417,7 +417,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   a sampler-aware entry point (`runTracerInMemoryWith`, and a `sampler` field on
   `PrettyPrintConfig`); the existing entry points default to `alwaysOn`, so
   behavior is unchanged unless a sampler is supplied.
-- Pretty-print interpreter (Phase 5): `runTracerPretty`, in
+- Pretty-print interpreter: `runTracerPretty`, in
   `Effectful.Tracing.Interpreter.PrettyPrint`, writes a human-readable,
   tree-shaped rendering of each finished trace to a `Handle` (usually
   `stderr`) for local development. Configurable via `PrettyPrintConfig`
@@ -434,7 +434,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   `Effectful.Tracing.Internal.Live`, behind a single `interpretTracer` that is
   parameterized only by a `Span -> IO ()` sink. The in-memory interpreter was
   refactored onto it with no behavior change.
-- In-memory interpreter (Phase 4): `runTracerInMemory`, in
+- In-memory interpreter: `runTracerInMemory`, in
   `Effectful.Tracing.Interpreter.InMemory`, captures every completed span into
   a shared `CapturedSpans` buffer (`newCapturedSpans` / `readCapturedSpans`) so
   tests can assert on what a traced computation produced. This is the first
@@ -449,7 +449,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   ordered timing, nesting, sibling structure, exception recording, async-kill
   single-close, lexical emit targeting, and a property check that captured
   spans always form a valid forest.
-- No-op interpreter (Phase 3): `runTracerNoOp`, re-exported from
+- No-op interpreter: `runTracerNoOp`, re-exported from
   `Effectful.Tracing`, discharges the `Tracer` effect with no observable
   effect: scoped actions run unchanged (exceptions propagate), emit operations
   are silent, and there is never an active span. This is the interpreter for
@@ -459,7 +459,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   (`bench/Main.hs`) reports the fixed per-`withSpan` cost (~15 ns, dynamic
   dispatch plus `localSeqUnlift`); spans wrapping real work stay under the 5%
   overhead target. The README quick-start now runs against `runTracerNoOp`.
-- `Tracer` effect (Phase 2): tracing modeled as a dynamic `effectful` effect.
+- `Tracer` effect: tracing modeled as a dynamic `effectful` effect.
   - The effect with one higher-order operation (`WithSpan`) and first-order
     emit operations (`AddAttribute`, `AddAttributes`, `AddEvent`,
     `RecordException`, `SetStatus`, `GetActiveSpan`), in
@@ -474,7 +474,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
     status transition rules (Ok is final; never downgrade to Unset).
   - A compile-only test proving the public API typechecks.
   - No interpreter yet: user code can be written against `Tracer` but not run.
-- Core data model (Phase 1): the effect-system-independent types every
+- Core data model: the effect-system-independent types every
   interpreter shares.
   - `TraceId` (16 bytes) and `SpanId` (8 bytes) with fast-PRNG generation,
     byte and lowercase-hex codecs, and validity checks.
@@ -490,7 +490,7 @@ databases (postgresql-simple, sqlite-simple, valiant), and message queues
   - Hedgehog generators for every public type and property tests covering hex
     round-trips, generated-id validity, trace-state round-trips and the entry
     cap, attribute coercions, and span time ordering.
-- Project scaffolding (Phase 0): cabal package targeting GHC 9.10.3, a tasty
+- Project scaffolding: cabal package targeting GHC 9.10.3, a tasty
   test suite, a tasty-bench benchmark harness, hlint configuration, and a
   GitHub Actions CI workflow. No automated formatter is used. No library
   functionality yet.

@@ -4,7 +4,7 @@
 -- Copyright   : (c) The effectful-tracing contributors
 -- License     : BSD-3-Clause
 --
--- Per-phase specs live under @test/Effectful/Tracing/@ and are aggregated here.
+-- Specs live under @test/Effectful/Tracing/@ and are aggregated here.
 {-# LANGUAGE CPP #-}
 
 module Main (main) where

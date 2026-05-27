@@ -45,7 +45,7 @@ import Effectful.Tracing.Gen
 tests :: TestTree
 tests =
   testGroup
-    "Phase 1 data model"
+    "core data model"
     [ testProperty "TraceId hex round-trips" prop_traceIdHexRoundTrip
     , testProperty "SpanId hex round-trips" prop_spanIdHexRoundTrip
     , testProperty "generated TraceId is valid" prop_generatedTraceIdValid

@@ -8,7 +8,7 @@
 -- Copyright   : (c) The effectful-tracing contributors
 -- License     : BSD-3-Clause
 --
--- The no-op overhead benchmark (Phase 3): a chain of @n@ trivial operations run
+-- The no-op overhead benchmark: a chain of @n@ trivial operations run
 -- plain versus the same chain with each operation wrapped in @withSpan@ under
 -- 'runTracerNoOp'. The comparison entries report the traced run as a ratio of the
 -- plain baseline within a single run, since absolute timings are not comparable

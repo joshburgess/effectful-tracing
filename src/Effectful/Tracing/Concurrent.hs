@@ -28,7 +28,7 @@
 -- 'Effectful.Concurrent.Async.async', and friends with a @'Tracer' ':>' es@
 -- constraint that documents intent and pins the relationship at the point of
 -- the fork. Had the active span been a shared stack, the child would race the
--- parent for the stack top and this phase would be a swamp of races; it is not,
+-- parent for the stack top and this would be a swamp of races; it is not,
 -- because the representation was chosen to avoid exactly that.
 --
 -- == Parent versus link
