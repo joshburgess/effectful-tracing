@@ -28,7 +28,6 @@ extra-doc-files:
   docs/tutorial.md
   docs/cookbook.md
   docs/design.md
-  docs/design-notes.md
 
 source-repository head
   type:     git

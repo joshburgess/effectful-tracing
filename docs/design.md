@@ -2,9 +2,7 @@
 
 How `effectful-tracing` is built and why. This is the thematic overview: it
 explains the library's structure as it stands, organized by concept rather than
-by the order things were built. If you want the chronological "how we got here"
-narrative, including decisions that were revised along the way, that lives in
-[`design-notes.md`](design-notes.md).
+by the order things were built.
 
 ## The core idea
 
@@ -540,6 +538,3 @@ base package stays light.
 - [`tutorial.md`](tutorial.md): a guided walkthrough from a terminal trace to
   OpenTelemetry export.
 - [`cookbook.md`](cookbook.md): focused recipes for everyday tasks.
-- [`design-notes.md`](design-notes.md): the chronological development history,
-  phase by phase, including decisions that were later revised. This document is
-  the consolidated overview of where that history landed.

@@ -21,8 +21,7 @@
 -- its own 't:Sampler' before OpenTelemetry sees the span; the translation copies
 -- those ids verbatim into the exported span. This keeps the ids consistent with
 -- what "Effectful.Tracing.Propagation" injects on the wire, which would not hold
--- if we delegated id generation to OpenTelemetry's @createSpan@. The design note
--- for this phase records why, and the consequences.
+-- if we delegated id generation to OpenTelemetry's @createSpan@.
 --
 -- __Interop boundary.__ We deliberately do not thread OpenTelemetry's in-process
 -- @Context@. Mixing this interpreter with an existing @hs-opentelemetry@
